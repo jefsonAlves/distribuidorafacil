@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, User, Truck, ArrowLeft } from "lucide-react";
+import { Building2, User, Truck, ArrowLeft, Flame } from "lucide-react";
 
 type UserType = "company" | "driver" | "client";
 
@@ -66,20 +66,25 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#EF5350]/5 via-[#F9FAFB] to-white p-4 py-12">
+      <Card className="w-full max-w-lg rounded-2xl shadow-xl border-0">
+        <CardHeader className="space-y-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/")}
-            className="mb-4 w-fit"
+            className="mb-4 w-fit text-[#333333] hover:text-[#EF5350] transition-colors duration-300"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar
           </Button>
-          <CardTitle className="text-2xl">Criar Conta</CardTitle>
-          <CardDescription>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#EF5350] to-[#E53935] flex items-center justify-center shadow-lg">
+              <Flame className="h-6 w-6 text-white" />
+            </div>
+            <CardTitle className="text-3xl font-bold text-[#333333]">Criar Conta</CardTitle>
+          </div>
+          <CardDescription className="text-base text-gray-600">
             Escolha o tipo de cadastro e preencha seus dados
           </CardDescription>
         </CardHeader>
@@ -87,58 +92,60 @@ const Register = () => {
           <form onSubmit={handleRegister} className="space-y-6">
             {/* SELEÇÃO DE TIPO */}
             <div className="space-y-3">
-              <Label>Tipo de Cadastro</Label>
+              <Label className="text-[#333333] font-medium">Tipo de Cadastro</Label>
               <RadioGroup value={userType} onValueChange={(value) => setUserType(value as UserType)}>
-                <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
-                  <RadioGroupItem value="client" id="client" />
-                  <Label htmlFor="client" className="flex items-center gap-2 cursor-pointer flex-1">
-                  <User className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">Cliente</div>
-                    <div className="text-xs text-muted-foreground">Fazer pedidos</div>
-                  </div>
-                </Label>
-              </div>
+                <div className="flex items-center space-x-3 border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-[#EF5350] hover:bg-[#EF5350]/5 transition-all duration-300">
+                  <RadioGroupItem value="client" id="client" className="border-[#EF5350] text-[#EF5350]" />
+                  <Label htmlFor="client" className="flex items-center gap-3 cursor-pointer flex-1">
+                    <User className="h-6 w-6 text-[#EF5350]" />
+                    <div>
+                      <div className="font-semibold text-[#333333]">Cliente</div>
+                      <div className="text-sm text-gray-600">Fazer pedidos</div>
+                    </div>
+                  </Label>
+                </div>
 
-              <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
-                <RadioGroupItem value="company" id="company" />
-                <Label htmlFor="company" className="flex items-center gap-2 cursor-pointer flex-1">
-                  <Building2 className="h-5 w-5 text-accent" />
-                  <div>
-                    <div className="font-medium">Empresa</div>
-                    <div className="text-xs text-muted-foreground">Gerenciar negócio</div>
-                  </div>
-                </Label>
-              </div>
+                <div className="flex items-center space-x-3 border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-[#264653] hover:bg-[#264653]/5 transition-all duration-300">
+                  <RadioGroupItem value="company" id="company" className="border-[#264653] text-[#264653]" />
+                  <Label htmlFor="company" className="flex items-center gap-3 cursor-pointer flex-1">
+                    <Building2 className="h-6 w-6 text-[#264653]" />
+                    <div>
+                      <div className="font-semibold text-[#333333]">Empresa</div>
+                      <div className="text-sm text-gray-600">Gerenciar negócio</div>
+                    </div>
+                  </Label>
+                </div>
               </RadioGroup>
             </div>
 
             {/* CAMPOS COMUNS */}
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="fullName">Nome Completo *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-[#333333] font-medium">Nome Completo *</Label>
                 <Input
                   id="fullName"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
+                  className="rounded-xl border-gray-200 focus:border-[#EF5350] focus:ring-[#EF5350] transition-all duration-300"
                 />
               </div>
 
-              <div>
-                <Label htmlFor="email">Email *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-[#333333] font-medium">Email *</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="rounded-xl border-gray-200 focus:border-[#EF5350] focus:ring-[#EF5350] transition-all duration-300"
                 />
               </div>
 
-              <div>
-                <Label htmlFor="phone">Telefone *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-[#333333] font-medium">Telefone *</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -146,11 +153,12 @@ const Register = () => {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
+                  className="rounded-xl border-gray-200 focus:border-[#EF5350] focus:ring-[#EF5350] transition-all duration-300"
                 />
               </div>
 
-              <div>
-                <Label htmlFor="password">Senha *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-[#333333] font-medium">Senha *</Label>
                 <Input
                   id="password"
                   type="password"
@@ -158,6 +166,7 @@ const Register = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
+                  className="rounded-xl border-gray-200 focus:border-[#EF5350] focus:ring-[#EF5350] transition-all duration-300"
                 />
               </div>
             </div>
@@ -165,50 +174,57 @@ const Register = () => {
             {/* CAMPOS ESPECÍFICOS POR TIPO */}
             {userType === "company" && (
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="companyName">Razão Social *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="companyName" className="text-[#333333] font-medium">Razão Social *</Label>
                   <Input
                     id="companyName"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     required
+                    className="rounded-xl border-gray-200 focus:border-[#EF5350] focus:ring-[#EF5350] transition-all duration-300"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="cnpj">CNPJ *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="cnpj" className="text-[#333333] font-medium">CNPJ *</Label>
                   <Input
                     id="cnpj"
                     placeholder="00.000.000/0000-00"
                     value={cnpj}
                     onChange={(e) => setCnpj(e.target.value)}
                     required
+                    className="rounded-xl border-gray-200 focus:border-[#EF5350] focus:ring-[#EF5350] transition-all duration-300"
                   />
                 </div>
               </div>
             )}
 
             {userType === "client" && (
-              <div>
-                <Label htmlFor="cpf">CPF</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cpf" className="text-[#333333] font-medium">CPF</Label>
                 <Input
                   id="cpf"
                   placeholder="000.000.000-00"
                   value={cpf}
                   onChange={(e) => setCpf(e.target.value)}
+                  className="rounded-xl border-gray-200 focus:border-[#EF5350] focus:ring-[#EF5350] transition-all duration-300"
                 />
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-[#EF5350] hover:bg-[#E53935] text-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 h-12 text-base font-semibold" 
+              disabled={loading}
+            >
               {loading ? "Cadastrando..." : "Criar Conta"}
             </Button>
 
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-center text-sm text-gray-600">
               Já tem uma conta?{" "}
               <button
                 type="button"
                 onClick={() => navigate("/auth/login")}
-                className="text-primary hover:underline"
+                className="text-[#EF5350] hover:text-[#E53935] font-semibold transition-colors duration-300"
               >
                 Entrar
               </button>

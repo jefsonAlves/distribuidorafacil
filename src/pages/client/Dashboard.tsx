@@ -94,14 +94,24 @@ const ClientDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
+    <div className="min-h-screen bg-gradient-to-br from-[#F9FAFB] via-white to-[#F9FAFB]">
       {/* HEADER */}
-      <header className="bg-card border-b">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <h1 className="text-xl font-bold">Meus Pedidos</h1>
-          <div className="flex items-center gap-2">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="container mx-auto px-4 lg:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#EF5350] to-[#E53935] flex items-center justify-center shadow-md">
+              <Package className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-[#333333]">Meus Pedidos</h1>
+          </div>
+          <div className="flex items-center gap-3">
             {user && <NotificationBell userId={user.id} userRole="client" />}
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="text-[#333333] hover:text-[#EF5350] transition-colors duration-300"
+            >
               <LogOut className="h-4 w-4 mr-2" />
               Sair
             </Button>
@@ -110,43 +120,58 @@ const ClientDashboard = () => {
       </header>
 
       {/* CONTEÚDO */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 lg:px-8 py-8">
         <div className="max-w-5xl mx-auto">
           <Tabs defaultValue="pedidos" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
-              <TabsTrigger value="pedidos">
+            <TabsList className="grid w-full grid-cols-3 mb-8 bg-white rounded-2xl p-1 shadow-md">
+              <TabsTrigger 
+                value="pedidos"
+                className="rounded-xl data-[state=active]:bg-[#EF5350] data-[state=active]:text-white transition-all duration-300"
+              >
                 <Package className="h-4 w-4 mr-2" />
                 Fazer Pedido
               </TabsTrigger>
-              <TabsTrigger value="historico">
+              <TabsTrigger 
+                value="historico"
+                className="rounded-xl data-[state=active]:bg-[#EF5350] data-[state=active]:text-white transition-all duration-300"
+              >
                 <History className="h-4 w-4 mr-2" />
                 Histórico
               </TabsTrigger>
-              <TabsTrigger value="perfil">
+              <TabsTrigger 
+                value="perfil"
+                className="rounded-xl data-[state=active]:bg-[#EF5350] data-[state=active]:text-white transition-all duration-300"
+              >
                 <User className="h-4 w-4 mr-2" />
                 Meu Perfil
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="pedidos">
-              <div className="text-center py-12">
-                <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-2xl font-bold mb-4">Fazer Pedido</h2>
-                <p className="text-muted-foreground mb-6">
-                  Clique no botão abaixo para criar um novo pedido
+            <TabsContent value="pedidos" className="mt-8">
+              <div className="text-center py-16 bg-white rounded-2xl shadow-md border border-gray-100">
+                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-[#EF5350]/10 to-[#E53935]/10 flex items-center justify-center mx-auto mb-6">
+                  <Package className="h-10 w-10 text-[#EF5350]" />
+                </div>
+                <h2 className="text-3xl font-bold mb-4 text-[#333333]">Fazer Pedido</h2>
+                <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">
+                  Clique no botão abaixo para criar um novo pedido de gás
                 </p>
-                <Button size="lg" onClick={() => setOrderDialogOpen(true)}>
+                <Button 
+                  size="lg" 
+                  onClick={() => setOrderDialogOpen(true)}
+                  className="bg-[#EF5350] hover:bg-[#E53935] text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                >
                   <Package className="h-5 w-5 mr-2" />
                   Novo Pedido
                 </Button>
               </div>
             </TabsContent>
 
-            <TabsContent value="historico">
+            <TabsContent value="historico" className="mt-8">
               {clientId && <OrderHistory clientId={clientId} />}
             </TabsContent>
 
-            <TabsContent value="perfil">
+            <TabsContent value="perfil" className="mt-8">
               {user && <ProfileForm userId={user.id} />}
             </TabsContent>
           </Tabs>
