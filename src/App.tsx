@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import RequireAuth from "@/components/auth/RequireAuth";
+import RequireRole from "@/components/auth/RequireRole";
 
 // Landing & Auth
 import LandingPage from "./pages/LandingPage";
@@ -41,13 +43,58 @@ const App = () => (
           {/* Admin Master */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/emergency-reset" element={<AdminEmergencyReset />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/companies" element={<AdminCompanies />} />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <RequireAuth>
+                <RequireRole role="admin_master">
+                  <AdminDashboard />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/companies"
+            element={
+              <RequireAuth>
+                <RequireRole role="admin_master">
+                  <AdminCompanies />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
           
           {/* Dashboards */}
-          <Route path="/client/dashboard" element={<ClientDashboard />} />
-          <Route path="/company/dashboard" element={<CompanyDashboard />} />
-          <Route path="/driver/dashboard" element={<DriverDashboard />} />
+          <Route
+            path="/client/dashboard"
+            element={
+              <RequireAuth>
+                <RequireRole role="client">
+                  <ClientDashboard />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/company/dashboard"
+            element={
+              <RequireAuth>
+                <RequireRole role="company_admin">
+                  <CompanyDashboard />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/driver/dashboard"
+            element={
+              <RequireAuth>
+                <RequireRole role="driver">
+                  <DriverDashboard />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

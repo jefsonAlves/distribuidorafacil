@@ -71,3 +71,33 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Setup local rápido
+
+1. Requisitos: Node 18+ e npm.
+2. Instale dependências:
+
+```sh
+npm i
+```
+
+3. Crie um arquivo `.env` na raiz com suas chaves do Supabase:
+
+```
+VITE_SUPABASE_URL=https://SEU_PROJETO.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=SEU_ANON_KEY
+```
+
+4. Aplique as migrações no seu projeto Supabase (SQL Editor):
+   - Copie e execute o conteúdo dos arquivos em `supabase/migrations/` na ordem (de cima para baixo dentro do arquivo principal, respeitando dependências), ou use a CLI `supabase db push`.
+
+5. Inicie o app:
+
+```sh
+npm run dev
+```
+
+### Dicas
+- As rotas de dashboard agora exigem autenticação e role específica (guards `RequireAuth` e `RequireRole`).
+- Garanta que a tabela `user_roles` exista e esteja populada (as migrações fazem a migração do `profiles.role` para `user_roles`).
+- O sistema de notificações usa Realtime; verifique se o Realtime está habilitado e a publicação inclui `public.notifications`.

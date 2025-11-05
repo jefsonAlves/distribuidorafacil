@@ -31,10 +31,12 @@ export const NotificationBell = ({ userId, userRole }: NotificationBellProps) =>
 
   useEffect(() => {
     fetchNotifications();
-    setupRealtime();
+    const channel = setupRealtime();
 
     return () => {
-      supabase.removeChannel(supabase.channel(`notifications_${userId}`));
+      if (channel) {
+        channel.unsubscribe();
+      }
     };
   }, [userId, userRole]);
 
@@ -86,6 +88,7 @@ export const NotificationBell = ({ userId, userRole }: NotificationBellProps) =>
         }
       )
       .subscribe();
+    return channel;
   };
 
   useEffect(() => {
