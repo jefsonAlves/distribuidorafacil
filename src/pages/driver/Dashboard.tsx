@@ -1,0 +1,98 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { LogOut } from "lucide-react";
+import { AvailabilityToggle } from "@/components/driver/AvailabilityToggle";
+import { OrdersList } from "@/components/driver/OrdersList";
+import { NotificationBell } from "@/components/ui/NotificationBell";
+
+const DriverDashboard = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [driverId, setDriverId] = useState<string>("");
+  const [tenantId, setTenantId] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        navigate("/auth/login");
+        return;
+      }
+
+      setUser(session.user);
+
+      // Buscar dados do motorista
+      const { data: driverData, error: driverError } = await supabase
+        .from("drivers")
+        .select("id, tenant_id")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (driverError) throw driverError;
+      if (driverData) {
+        setDriverId(driverData.id);
+        setTenantId(driverData.tenant_id);
+      }
+    } catch (error) {
+      console.error("Erro ao verificar autenticação:", error);
+      navigate("/auth/login");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Logout realizado com sucesso!");
+    navigate("/");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Carregando...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
+      {/* HEADER */}
+      <header className="bg-card border-b">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <h1 className="text-xl font-bold">Minhas Entregas</h1>
+          <div className="flex items-center gap-2">
+            {user && <NotificationBell userId={user.id} userRole="driver" />}
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* CONTEÚDO */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-5xl mx-auto space-y-6">
+          {driverId && tenantId && (
+            <>
+              <AvailabilityToggle driverId={driverId} tenantId={tenantId} />
+              <OrdersList driverId={driverId} />
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DriverDashboard;
