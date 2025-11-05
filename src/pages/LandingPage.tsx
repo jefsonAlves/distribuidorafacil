@@ -1,191 +1,419 @@
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Droplets, Flame, Shield, Truck, Clock, MapPin } from "lucide-react";
+import { 
+  Flame, 
+  Home, 
+  Truck, 
+  Clock, 
+  MessageCircle, 
+  Lock, 
+  Scale,
+  Instagram,
+  Facebook,
+  Phone,
+  Mail,
+  MapPin,
+  CheckCircle2,
+  ArrowRight
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Verificar se o usuário está autenticado
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // Listener para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleAction = (action: 'pedido' | 'saiba-mais') => {
+    if (isAuthenticated) {
+      // Se autenticado, redirecionar baseado no tipo de usuário
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", session.user.id)
+            .then(({ data: roles }) => {
+              if (roles && roles.length > 0) {
+                const userRoles = roles.map(r => r.role);
+                if (userRoles.includes("client")) {
+                  navigate("/client/dashboard");
+                } else if (userRoles.includes("company_admin")) {
+                  navigate("/company/dashboard");
+                } else if (userRoles.includes("driver")) {
+                  navigate("/driver/dashboard");
+                } else {
+                  navigate("/auth/login");
+                }
+              } else {
+                navigate("/auth/login");
+              }
+            });
+        } else {
+          navigate("/auth/login");
+        }
+      });
+    } else {
+      // Se não autenticado, redirecionar para login ou cadastro
+      if (action === 'pedido') {
+        navigate("/auth/register", { state: { redirectTo: "/client/dashboard" } });
+      } else {
+        navigate("/auth/login");
+      }
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
+    <div className="min-h-screen bg-white">
       {/* HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-lg border-b">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Droplets className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold bg-gradient-hero bg-clip-text text-transparent">
-              DeliveryPro
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+        <div className="container mx-auto px-4 lg:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#EF5350] to-[#E53935] flex items-center justify-center shadow-lg">
+              <Flame className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-[#333333] tracking-tight">
+              Chaski Gas
             </span>
           </div>
-          <Button onClick={() => navigate("/auth/login")} variant="default">
-            Entrar
+          
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#empresa" className="text-[#333333] hover:text-[#EF5350] transition-colors duration-300 font-medium">Empresa</a>
+            <a href="#produtos" className="text-[#333333] hover:text-[#EF5350] transition-colors duration-300 font-medium">Produtos</a>
+            <a href="#servicos" className="text-[#333333] hover:text-[#EF5350] transition-colors duration-300 font-medium">Serviços</a>
+            <a href="#contato" className="text-[#333333] hover:text-[#EF5350] transition-colors duration-300 font-medium">Contato</a>
+          </nav>
+
+          <Button 
+            onClick={() => handleAction('pedido')}
+            className="bg-[#EF5350] hover:bg-[#E53935] text-white shadow-md hover:shadow-lg transition-all duration-300 rounded-xl px-6"
+          >
+            Pedidos
           </Button>
         </div>
       </header>
 
       {/* HERO SECTION */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="container mx-auto text-center">
-          <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-gradient-hero shadow-glow mb-6 animate-bounce">
-            <Droplets className="h-10 w-10 text-white" />
-          </div>
-          
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-            <span className="bg-gradient-hero bg-clip-text text-transparent">
-              Água e Gás
-            </span>
-            <br />
-            na Porta da Sua Casa
-          </h1>
-          
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Entrega rápida e segura de água mineral e gás. Peça pelo app e acompanhe em tempo real.
-          </p>
+      <section className="pt-32 pb-24 px-4 bg-gradient-to-b from-[#EF5350]/10 via-white to-white relative overflow-hidden">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Texto */}
+            <div className="space-y-8 animate-fade-in">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#333333] leading-tight">
+                Distribuímos Gás com<br />
+                <span className="text-[#EF5350]">Segurança e Rapidez</span>
+              </h1>
+              
+              <p className="text-xl text-gray-600 leading-relaxed">
+                Faça seu pedido agora mesmo e receba em casa com toda a segurança e qualidade que você merece.
+              </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="gradient-hero shadow-glow hover:shadow-xl transition-smooth"
-              onClick={() => navigate("/auth/register")}
-            >
-              Fazer Pedido
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate("/auth/register")}
-            >
-              Cadastrar Empresa
-            </Button>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button
+                  size="lg"
+                  onClick={() => handleAction('pedido')}
+                  className="bg-[#EF5350] hover:bg-[#E53935] text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl px-8 py-6 text-lg font-semibold"
+                >
+                  Fazer Pedido
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => handleAction('saiba-mais')}
+                  className="border-2 border-[#EF5350] text-[#EF5350] hover:bg-[#EF5350] hover:text-white transition-all duration-300 rounded-2xl px-8 py-6 text-lg font-semibold"
+                >
+                  Saiba Mais
+                </Button>
+              </div>
+            </div>
+
+            {/* Imagem do Botijão */}
+            <div className="relative animate-fade-in-delay">
+              <div className="relative z-10 flex justify-center">
+                <div className="h-96 w-96 rounded-full bg-gradient-to-br from-[#EF5350]/20 to-[#E53935]/10 flex items-center justify-center shadow-2xl">
+                  <div className="h-80 w-80 rounded-full bg-gradient-to-br from-[#EF5350]/30 to-[#E53935]/20 flex items-center justify-center">
+                    <Flame className="h-48 w-48 text-[#EF5350] drop-shadow-2xl" />
+                  </div>
+                </div>
+              </div>
+              {/* Decoração de fundo */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] bg-[#EF5350]/5 rounded-full blur-3xl"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SERVIÇOS */}
+      <section id="servicos" className="py-20 px-4 bg-[#F9FAFB]">
+        <div className="container mx-auto max-w-6xl">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-[#333333] mb-16">
+            Nossos Serviços
+          </h2>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Entrega em Domicílio */}
+            <Card className="p-8 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border-0">
+              <div className="h-16 w-16 rounded-2xl bg-[#EF5350]/10 flex items-center justify-center mb-6">
+                <Home className="h-8 w-8 text-[#EF5350]" />
+              </div>
+              <h3 className="text-2xl font-bold text-[#333333] mb-3">Entrega em Domicílio</h3>
+              <p className="text-gray-600 leading-relaxed">Rápida e segura, levamos até você com toda a comodidade.</p>
+            </Card>
+
+            {/* Gás Envasado */}
+            <Card className="p-8 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border-0">
+              <div className="h-16 w-16 rounded-2xl bg-[#264653]/10 flex items-center justify-center mb-6">
+                <Flame className="h-8 w-8 text-[#264653]" />
+              </div>
+              <h3 className="text-2xl font-bold text-[#333333] mb-3">Gás Envasado</h3>
+              <p className="text-gray-600 leading-relaxed">5kg, 10kg, 15kg, 45kg - Todos os tamanhos disponíveis.</p>
+            </Card>
+
+            {/* Gás a Granel */}
+            <Card className="p-8 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border-0">
+              <div className="h-16 w-16 rounded-2xl bg-[#EF5350]/10 flex items-center justify-center mb-6">
+                <Truck className="h-8 w-8 text-[#EF5350]" />
+              </div>
+              <h3 className="text-2xl font-bold text-[#333333] mb-3">Gás a Granel</h3>
+              <p className="text-gray-600 leading-relaxed">Ideal para restaurantes e comércios com maior demanda.</p>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* POR QUE ESCOLHER */}
+      <section id="empresa" className="py-20 px-4 bg-white">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Lado Esquerdo - Imagem */}
+            <div className="relative">
+              <div className="relative z-10 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="h-96 bg-gradient-to-br from-[#EF5350]/20 to-[#264653]/20 flex items-center justify-center">
+                  <div className="text-center space-y-4">
+                    <div className="h-32 w-32 rounded-full bg-white/80 mx-auto flex items-center justify-center shadow-lg">
+                      <MessageCircle className="h-16 w-16 text-[#EF5350]" />
+                    </div>
+                    <p className="text-lg font-semibold text-[#333333]">Equipe Dedicada</p>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -bottom-4 -right-4 h-64 w-64 bg-[#EF5350]/5 rounded-full blur-3xl"></div>
+            </div>
+
+            {/* Lado Direito - Benefícios */}
+            <div className="space-y-12">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold text-[#333333] mb-4">
+                  Por que escolher<br />
+                  <span className="text-[#EF5350]">Chaski Gas?</span>
+                </h2>
+                <p className="text-lg text-gray-600">
+                  Somos especialistas em distribuição de gás com compromisso com a qualidade e segurança.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                {/* Pontualidade */}
+                <div className="space-y-3 group">
+                  <div className="h-14 w-14 rounded-2xl bg-[#EF5350]/10 flex items-center justify-center group-hover:bg-[#EF5350] transition-all duration-300">
+                    <Clock className="h-7 w-7 text-[#EF5350] group-hover:text-white transition-colors duration-300" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#333333]">Pontualidade</h3>
+                  <p className="text-gray-600 text-sm">Entrega no horário combinado</p>
+                </div>
+
+                {/* Trato Amável */}
+                <div className="space-y-3 group">
+                  <div className="h-14 w-14 rounded-2xl bg-[#EF5350]/10 flex items-center justify-center group-hover:bg-[#EF5350] transition-all duration-300">
+                    <MessageCircle className="h-7 w-7 text-[#EF5350] group-hover:text-white transition-colors duration-300" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#333333]">Trato Amável</h3>
+                  <p className="text-gray-600 text-sm">Atendimento de excelência</p>
+                </div>
+
+                {/* Stock Permanente */}
+                <div className="space-y-3 group">
+                  <div className="h-14 w-14 rounded-2xl bg-[#EF5350]/10 flex items-center justify-center group-hover:bg-[#EF5350] transition-all duration-300">
+                    <Lock className="h-7 w-7 text-[#EF5350] group-hover:text-white transition-colors duration-300" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#333333]">Stock Permanente</h3>
+                  <p className="text-gray-600 text-sm">Sempre disponível</p>
+                </div>
+
+                {/* Peso Exato */}
+                <div className="space-y-3 group">
+                  <div className="h-14 w-14 rounded-2xl bg-[#EF5350]/10 flex items-center justify-center group-hover:bg-[#EF5350] transition-all duration-300">
+                    <Scale className="h-7 w-7 text-[#EF5350] group-hover:text-white transition-colors duration-300" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#333333]">Peso Exato</h3>
+                  <p className="text-gray-600 text-sm">Garantia de qualidade</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* PRODUTOS */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Nossos Produtos</h2>
+      <section id="produtos" className="py-20 px-4 bg-[#F9FAFB]">
+        <div className="container mx-auto max-w-6xl">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-[#333333] mb-16">
+            Nossos Produtos
+          </h2>
           
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <Card className="p-6 hover:shadow-lg transition-smooth hover:-translate-y-1 cursor-pointer">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 mx-auto">
-                <Droplets className="h-8 w-8 text-primary" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* 5kg */}
+            <Card className="p-6 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border-0 text-center group cursor-pointer">
+              <div className="h-32 w-32 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Flame className="h-16 w-16 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-semibold text-center mb-3">Água Mineral</h3>
-              <p className="text-muted-foreground text-center mb-4">
-                Garrafões de 20L de água mineral pura e cristalina
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <span>Certificada e filtrada</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-primary" />
-                  <span>Entrega rápida</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span>Disponível 24/7</span>
-                </li>
-              </ul>
+              <h3 className="text-2xl font-bold text-[#333333] mb-2">5kg</h3>
+              <p className="text-gray-600 text-sm">Ideal para uso doméstico</p>
             </Card>
 
-            <Card className="p-6 hover:shadow-lg transition-smooth hover:-translate-y-1 cursor-pointer">
-              <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mb-4 mx-auto">
-                <Flame className="h-8 w-8 text-accent" />
+            {/* 10kg */}
+            <Card className="p-6 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border-0 text-center group cursor-pointer">
+              <div className="h-32 w-32 rounded-full bg-gradient-to-br from-green-100 to-green-200 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Flame className="h-16 w-16 text-green-600" />
               </div>
-              <h3 className="text-2xl font-semibold text-center mb-3">Gás de Cozinha</h3>
-              <p className="text-muted-foreground text-center mb-4">
-                Botijas P13 com garantia de qualidade e segurança
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-accent" />
-                  <span>Certificado Inmetro</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-accent" />
-                  <span>Troca facilitada</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-accent" />
-                  <span>Emergência 24h</span>
-                </li>
-              </ul>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* BENEFÍCIOS */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Por Que Escolher a DeliveryPro?</h2>
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="p-6 text-center">
-              <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Rastreamento em Tempo Real</h3>
-              <p className="text-sm text-muted-foreground">
-                Acompanhe seu pedido desde a saída até a entrega
-              </p>
+              <h3 className="text-2xl font-bold text-[#333333] mb-2">10kg</h3>
+              <p className="text-gray-600 text-sm">Perfeito para famílias</p>
             </Card>
 
-            <Card className="p-6 text-center">
-              <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Entrega Rápida</h3>
-              <p className="text-sm text-muted-foreground">
-                Receba seus produtos em até 2 horas
-              </p>
+            {/* 15kg */}
+            <Card className="p-6 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border-0 text-center group cursor-pointer">
+              <div className="h-32 w-32 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Flame className="h-16 w-16 text-orange-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-[#333333] mb-2">15kg</h3>
+              <p className="text-gray-600 text-sm">Mais popular</p>
             </Card>
 
-            <Card className="p-6 text-center">
-              <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Pagamento Seguro</h3>
-              <p className="text-sm text-muted-foreground">
-                Cartão, Pix ou dinheiro. Você escolhe!
-              </p>
+            {/* 45kg */}
+            <Card className="p-6 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border-0 text-center group cursor-pointer">
+              <div className="h-32 w-32 rounded-full bg-gradient-to-br from-[#EF5350]/20 to-[#E53935]/20 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Flame className="h-16 w-16 text-[#EF5350]" />
+              </div>
+              <h3 className="text-2xl font-bold text-[#333333] mb-2">45kg</h3>
+              <p className="text-gray-600 text-sm">Para comércios</p>
             </Card>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-card border-t py-12 px-4">
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
-            <div>
-              <div className="flex items-center gap-2 justify-center md:justify-start mb-4">
-                <Droplets className="h-6 w-6 text-primary" />
-                <span className="font-bold text-lg">DeliveryPro</span>
+      <footer id="contato" className="bg-[#222222] text-white py-16 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid md:grid-cols-3 gap-12 mb-12">
+            {/* Logo e Descrição */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#EF5350] to-[#E53935] flex items-center justify-center">
+                  <Flame className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-2xl font-bold">Chaski Gas</span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Delivery de água e gás com qualidade e agilidade
+              <p className="text-gray-400 leading-relaxed">
+                Distribuindo gás com segurança e qualidade desde sempre. Seu conforto é nossa prioridade.
               </p>
             </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Links Rápidos</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button onClick={() => navigate("/auth/register")} className="hover:text-primary">Cadastre-se</button></li>
-                <li><button onClick={() => navigate("/auth/login")} className="hover:text-primary">Entrar</button></li>
-                <li><button className="hover:text-primary">Sobre Nós</button></li>
+
+            {/* Links Rápidos */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-bold mb-4">Links Rápidos</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#empresa" className="text-gray-400 hover:text-[#EF5350] transition-colors duration-300">Empresa</a>
+                </li>
+                <li>
+                  <a href="#produtos" className="text-gray-400 hover:text-[#EF5350] transition-colors duration-300">Produtos</a>
+                </li>
+                <li>
+                  <a href="#servicos" className="text-gray-400 hover:text-[#EF5350] transition-colors duration-300">Serviços</a>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => navigate("/auth/login")}
+                    className="text-gray-400 hover:text-[#EF5350] transition-colors duration-300"
+                  >
+                    Login
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => navigate("/auth/register")}
+                    className="text-gray-400 hover:text-[#EF5350] transition-colors duration-300"
+                  >
+                    Cadastre-se
+                  </button>
+                </li>
               </ul>
             </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Contato</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>WhatsApp: (11) 9999-9999</li>
-                <li>Email: contato@deliverypro.com</li>
-                <li>Horário: 24h por dia</li>
+
+            {/* Contato */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-bold mb-4">Contato</h4>
+              <ul className="space-y-3">
+                <li className="flex items-center gap-3 text-gray-400">
+                  <Phone className="h-5 w-5" />
+                  <span>(11) 9999-9999</span>
+                </li>
+                <li className="flex items-center gap-3 text-gray-400">
+                  <Mail className="h-5 w-5" />
+                  <span>contato@chaskigas.com</span>
+                </li>
+                <li className="flex items-center gap-3 text-gray-400">
+                  <MapPin className="h-5 w-5" />
+                  <span>São Paulo, SP</span>
+                </li>
               </ul>
+              
+              {/* Redes Sociais */}
+              <div className="flex gap-4 pt-4">
+                <a 
+                  href="#" 
+                  className="h-10 w-10 rounded-full bg-white/10 hover:bg-[#EF5350] flex items-center justify-center transition-all duration-300"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a 
+                  href="#" 
+                  className="h-10 w-10 rounded-full bg-white/10 hover:bg-[#EF5350] flex items-center justify-center transition-all duration-300"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="h-5 w-5" />
+                </a>
+                <a 
+                  href="#" 
+                  className="h-10 w-10 rounded-full bg-white/10 hover:bg-[#EF5350] flex items-center justify-center transition-all duration-300"
+                  aria-label="WhatsApp"
+                >
+                  <Phone className="h-5 w-5" />
+                </a>
+              </div>
             </div>
           </div>
-          
-          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            © 2025 DeliveryPro. Todos os direitos reservados.
+
+          {/* Linha Inferior */}
+          <div className="pt-8 border-t border-gray-700 text-center text-gray-400">
+            <p>© 2025 Chaski Gas. Todos os direitos reservados.</p>
+            <p className="mt-2">Telefone: (11) 9999-9999</p>
           </div>
         </div>
       </footer>

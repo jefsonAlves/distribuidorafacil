@@ -46,8 +46,15 @@ export const CreateDriverDialog = ({ open, onOpenChange, tenantId, onSuccess }: 
 
       if (error) throw error;
 
-      if (data.error) {
+      if (data?.error) {
         toast.error(data.error);
+        setLoading(false);
+        return;
+      }
+
+      if (!data?.success) {
+        toast.error("Erro ao cadastrar entregador. Tente novamente.");
+        setLoading(false);
         return;
       }
 

@@ -114,10 +114,28 @@ Deno.serve(async (req) => {
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
-    await supabaseClient
+    // Criar ou atualizar profile
+    const { error: profileUpdateError } = await supabaseClient
       .from('profiles')
-      .update({ tenant_id })
-      .eq('id', newUser.user.id)
+      .upsert({
+        id: newUser.user.id,
+        email: email,
+        full_name: full_name,
+        phone: phone,
+        cpf: cpf,
+        role: 'driver',
+        tenant_id: tenant_id,
+      }, {
+        onConflict: 'id'
+      })
+
+    if (profileUpdateError) {
+      console.error('Profile update error:', profileUpdateError)
+      return new Response(JSON.stringify({ error: 'Error creating profile: ' + profileUpdateError.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     const { data: driver, error: driverError } = await supabaseClient
       .from('drivers')
