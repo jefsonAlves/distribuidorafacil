@@ -188,7 +188,7 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
           client_id: clientId,
           total,
           payment_method: paymentMethod as any,
-          change_for: paymentMethod === "DINHEIRO" && changeFor ? parseFloat(changeFor) : null,
+          change_for: paymentMethod === "CASH" && changeFor ? parseFloat(changeFor) : null,
           address: address as any,
           status: "PENDENTE" as any,
         })
@@ -388,12 +388,12 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
-                <SelectItem value="CARTAO">Cartão</SelectItem>
+                <SelectItem value="CASH">Dinheiro</SelectItem>
+                <SelectItem value="CARD">Cartão</SelectItem>
                 <SelectItem value="PIX">PIX</SelectItem>
               </SelectContent>
             </Select>
-            {paymentMethod === "DINHEIRO" && (
+            {paymentMethod === "CASH" && (
               <div>
                 <Label>Troco para (opcional)</Label>
                 <Input

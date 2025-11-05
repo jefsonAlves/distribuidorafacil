@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Package, User, MapPin, CreditCard, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +25,8 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [cancelReason, setCancelReason] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<any>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -148,8 +151,14 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
     }
   };
 
-  const cancelOrder = async () => {
-    if (!selectedOrder || !cancelReason.trim()) {
+  const handleCancelClick = (order: any) => {
+    setOrderToCancel(order);
+    setCancelReason("");
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!orderToCancel || !cancelReason.trim()) {
       toast.error("Informe o motivo do cancelamento");
       return;
     }
@@ -162,13 +171,15 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
           status: "CANCELADO",
           cancel_reason: cancelReason 
         })
-        .eq("id", selectedOrder.id);
+        .eq("id", orderToCancel.id);
 
       if (error) throw error;
       
-      toast.success("Pedido cancelado");
-      setSelectedOrder(null);
+      toast.success("Pedido cancelado com sucesso");
+      setShowCancelDialog(false);
+      setOrderToCancel(null);
       setCancelReason("");
+      setSelectedOrder(null);
       fetchOrders();
     } catch (error: any) {
       console.error("Erro ao cancelar pedido:", error);
@@ -260,10 +271,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setCancelReason("");
-                      }}
+                      onClick={() => handleCancelClick(order)}
                     >
                       Cancelar
                     </Button>
@@ -366,18 +374,12 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                 {selectedOrder.status !== "CANCELADO" && selectedOrder.status !== "ENTREGUE" && (
                   <div className="space-y-3">
                     <Label>Cancelar Pedido</Label>
-                    <Textarea
-                      placeholder="Motivo do cancelamento..."
-                      value={cancelReason}
-                      onChange={(e) => setCancelReason(e.target.value)}
-                    />
                     <Button 
                       variant="destructive" 
-                      onClick={cancelOrder} 
-                      disabled={loading}
+                      onClick={() => handleCancelClick(selectedOrder)} 
                       className="w-full"
                     >
-                      {loading ? "Cancelando..." : "Confirmar Cancelamento"}
+                      Cancelar Este Pedido
                     </Button>
                   </div>
                 )}
@@ -386,6 +388,45 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog de Confirmação de Cancelamento */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja cancelar o pedido #{orderToCancel?.id.slice(0, 8)}?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-4">
+            <Label>Motivo do Cancelamento *</Label>
+            <Textarea
+              placeholder="Ex: Cliente solicitou cancelamento, produto indisponível..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="mt-2"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowCancelDialog(false);
+              setOrderToCancel(null);
+              setCancelReason("");
+            }}>
+              Não, voltar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmCancelOrder}
+              disabled={loading || !cancelReason.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {loading ? "Cancelando..." : "Sim, cancelar pedido"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

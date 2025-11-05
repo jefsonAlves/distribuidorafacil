@@ -30,6 +30,23 @@ const DriverDashboard = () => {
 
       setUser(session.user);
 
+      // Verificar se usuário tem role de driver
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id);
+
+      if (rolesError) throw rolesError;
+
+      const isDriver = roles?.some(r => r.role === "driver");
+      
+      if (!isDriver) {
+        toast.error("Acesso negado: você não tem permissão de entregador");
+        await supabase.auth.signOut();
+        navigate("/auth/login");
+        return;
+      }
+
       // Buscar dados do motorista
       const { data: driverData, error: driverError } = await supabase
         .from("drivers")
@@ -37,13 +54,18 @@ const DriverDashboard = () => {
         .eq("user_id", session.user.id)
         .single();
 
-      if (driverError) throw driverError;
-      if (driverData) {
-        setDriverId(driverData.id);
-        setTenantId(driverData.tenant_id);
+      if (driverError || !driverData) {
+        toast.error("Cadastro de entregador não encontrado. Entre em contato com o suporte.");
+        await supabase.auth.signOut();
+        navigate("/auth/login");
+        return;
       }
+
+      setDriverId(driverData.id);
+      setTenantId(driverData.tenant_id);
     } catch (error) {
       console.error("Erro ao verificar autenticação:", error);
+      toast.error("Erro ao verificar permissões");
       navigate("/auth/login");
     } finally {
       setLoading(false);

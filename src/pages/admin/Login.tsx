@@ -28,7 +28,7 @@ const AdminLogin = () => {
 
       if (error) throw error;
 
-      // Check if user is admin_master (now in user_roles table)
+      // Verificar se usuário tem role admin_master
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("role")
@@ -42,7 +42,7 @@ const AdminLogin = () => {
         await supabase.auth.signOut();
         toast({
           title: "Acesso negado",
-          description: "Você não tem permissão para acessar esta área.",
+          description: "Você não tem permissão de administrador master para acessar esta área.",
           variant: "destructive",
         });
         return;
