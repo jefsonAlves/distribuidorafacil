@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Phone, Truck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { User, Phone, Truck, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { CreateDriverDialog } from "./CreateDriverDialog";
 
 interface DriversListProps {
   tenantId: string;
@@ -12,6 +14,7 @@ interface DriversListProps {
 export const DriversList = ({ tenantId }: DriversListProps) => {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchDrivers();
@@ -64,8 +67,15 @@ export const DriversList = ({ tenantId }: DriversListProps) => {
   const inactiveDrivers = drivers.filter(d => d.status === 'INACTIVE');
 
   return (
-    <Card className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Motoristas</h2>
+    <>
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Motoristas</h2>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Cadastrar Entregador
+          </Button>
+        </div>
 
       <div className="space-y-6">
         <div>
@@ -139,5 +149,13 @@ export const DriversList = ({ tenantId }: DriversListProps) => {
         </div>
       </div>
     </Card>
+
+    <CreateDriverDialog
+      open={dialogOpen}
+      onOpenChange={setDialogOpen}
+      tenantId={tenantId}
+      onSuccess={fetchDrivers}
+    />
+    </>
   );
 };

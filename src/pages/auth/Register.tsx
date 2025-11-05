@@ -92,35 +92,24 @@ const Register = () => {
                 <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
                   <RadioGroupItem value="client" id="client" />
                   <Label htmlFor="client" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <User className="h-5 w-5 text-primary" />
-                    <div>
-                      <div className="font-medium">Cliente</div>
-                      <div className="text-xs text-muted-foreground">Fazer pedidos</div>
-                    </div>
-                  </Label>
-                </div>
+                  <User className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-medium">Cliente</div>
+                    <div className="text-xs text-muted-foreground">Fazer pedidos</div>
+                  </div>
+                </Label>
+              </div>
 
-                <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
-                  <RadioGroupItem value="company" id="company" />
-                  <Label htmlFor="company" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <Building2 className="h-5 w-5 text-accent" />
-                    <div>
-                      <div className="font-medium">Empresa</div>
-                      <div className="text-xs text-muted-foreground">Gerenciar negócio</div>
-                    </div>
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
-                  <RadioGroupItem value="driver" id="driver" />
-                  <Label htmlFor="driver" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <Truck className="h-5 w-5 text-secondary" />
-                    <div>
-                      <div className="font-medium">Entregador</div>
-                      <div className="text-xs text-muted-foreground">Realizar entregas</div>
-                    </div>
-                  </Label>
-                </div>
+              <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-muted/50">
+                <RadioGroupItem value="company" id="company" />
+                <Label htmlFor="company" className="flex items-center gap-2 cursor-pointer flex-1">
+                  <Building2 className="h-5 w-5 text-accent" />
+                  <div>
+                    <div className="font-medium">Empresa</div>
+                    <div className="text-xs text-muted-foreground">Gerenciar negócio</div>
+                  </div>
+                </Label>
+              </div>
               </RadioGroup>
             </div>
 
@@ -192,31 +181,6 @@ const Register = () => {
                     placeholder="00.000.000/0000-00"
                     value={cnpj}
                     onChange={(e) => setCnpj(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
-            {userType === "driver" && (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="cpf">CPF *</Label>
-                  <Input
-                    id="cpf"
-                    placeholder="000.000.000-00"
-                    value={cpf}
-                    onChange={(e) => setCpf(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="vehicle">Veículo *</Label>
-                  <Input
-                    id="vehicle"
-                    placeholder="Ex: Moto Honda CG 160"
-                    value={vehicle}
-                    onChange={(e) => setVehicle(e.target.value)}
                     required
                   />
                 </div>
