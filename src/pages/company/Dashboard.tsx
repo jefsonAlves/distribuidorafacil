@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Package, LogOut, Truck, Users, BarChart3, Activity, UserCircle } from "lucide-react";
+import { Package, LogOut, Truck, Users, BarChart3, Activity, UserCircle, DollarSign } from "lucide-react";
 import { ProductList } from "@/components/company/ProductList";
 import { DriversList } from "@/components/company/DriversList";
 import { OrdersManagement } from "@/components/company/OrdersManagement";
@@ -14,6 +14,7 @@ import { RevenueReport } from "@/components/company/RevenueReport";
 import { LiveOrdersPanel } from "@/components/company/LiveOrdersPanel";
 import { ClientsList } from "@/components/company/ClientsList";
 import { NotificationBell } from "@/components/ui/NotificationBell";
+import { WalletDashboard } from "@/components/company/WalletDashboard";
 
 const CompanyDashboard = () => {
   const navigate = useNavigate();
@@ -89,7 +90,7 @@ const CompanyDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <Tabs defaultValue="visao-geral" className="w-full">
-            <TabsList className="grid w-full grid-cols-6 mb-8">
+            <TabsList className="grid w-full grid-cols-7 mb-8">
               <TabsTrigger value="visao-geral">
                 <Activity className="h-4 w-4 mr-2" />
                 Visão Geral
@@ -109,6 +110,10 @@ const CompanyDashboard = () => {
               <TabsTrigger value="clientes">
                 <UserCircle className="h-4 w-4 mr-2" />
                 Clientes
+              </TabsTrigger>
+              <TabsTrigger value="carteira">
+                <DollarSign className="h-4 w-4 mr-2" />
+                Carteira
               </TabsTrigger>
               <TabsTrigger value="relatorios">
                 <Users className="h-4 w-4 mr-2" />
@@ -134,6 +139,10 @@ const CompanyDashboard = () => {
 
             <TabsContent value="clientes">
               {tenantId && <ClientsList tenantId={tenantId} />}
+            </TabsContent>
+
+            <TabsContent value="carteira">
+              {tenantId && <WalletDashboard tenantId={tenantId} />}
             </TabsContent>
 
             <TabsContent value="relatorios">

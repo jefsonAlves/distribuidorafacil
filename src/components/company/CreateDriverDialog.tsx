@@ -69,7 +69,12 @@ export const CreateDriverDialog = ({ open, onOpenChange, tenantId, onSuccess }: 
         plate: "",
       });
       onOpenChange(false);
-      onSuccess();
+      
+      // Aguardar 500ms antes de atualizar lista
+      setTimeout(() => {
+        console.log("Atualizando lista de motoristas...");
+        onSuccess();
+      }, 500);
     } catch (error: any) {
       console.error("Erro ao criar entregador:", error);
       toast.error(error.message || "Erro ao cadastrar entregador");
