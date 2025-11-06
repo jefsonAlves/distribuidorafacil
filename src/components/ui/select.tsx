@@ -14,7 +14,7 @@ const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => {
-  const handlePointerDown = (e: React.PointerEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     // Prevenir submit do formulário quando o SelectTrigger é clicado dentro de um form
     const form = e.currentTarget.closest('form');
     if (form) {
@@ -24,7 +24,7 @@ const SelectTrigger = React.forwardRef<
     props.onPointerDown?.(e);
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
     // Prevenir submit do formulário quando o SelectTrigger é clicado dentro de um form
     const form = e.currentTarget.closest('form');
     if (form) {
@@ -126,7 +126,7 @@ const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
 >(({ className, children, ...props }, ref) => {
-  const handlePointerDown = (e: React.PointerEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Prevenir submit do formulário quando o SelectItem é clicado dentro de um form
     const form = e.currentTarget.closest('form');
     if (form) {
@@ -136,7 +136,7 @@ const SelectItem = React.forwardRef<
     props.onPointerDown?.(e);
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     // Prevenir submit do formulário quando o SelectItem é clicado dentro de um form
     const form = e.currentTarget.closest('form');
     if (form) {
