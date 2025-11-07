@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Building2, Search, DollarSign, Edit } from "lucide-react";
 import CreateCompanyDialog from "./CreateCompanyDialog";
 import { TenantBillingDialog } from "./TenantBillingDialog";
+import { CompanyEditDialog } from "./CompanyEditDialog";
 
 export const TenantsList = () => {
   const [tenants, setTenants] = useState<any[]>([]);
@@ -17,6 +18,7 @@ export const TenantsList = () => {
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showBillingDialog, setShowBillingDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -170,6 +172,18 @@ export const TenantsList = () => {
                     variant="outline"
                     onClick={() => {
                       setSelectedTenant(tenant);
+                      setShowEditDialog(true);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedTenant(tenant);
                       setShowBillingDialog(true);
                     }}
                   >
@@ -198,12 +212,20 @@ export const TenantsList = () => {
       />
 
       {selectedTenant && (
-        <TenantBillingDialog
-          open={showBillingDialog}
-          onOpenChange={setShowBillingDialog}
-          tenant={selectedTenant}
-          onSuccess={fetchTenants}
-        />
+        <>
+          <TenantBillingDialog
+            open={showBillingDialog}
+            onOpenChange={setShowBillingDialog}
+            tenant={selectedTenant}
+            onSuccess={fetchTenants}
+          />
+          <CompanyEditDialog
+            open={showEditDialog}
+            onOpenChange={setShowEditDialog}
+            tenant={selectedTenant}
+            onSuccess={fetchTenants}
+          />
+        </>
       )}
     </div>
   );

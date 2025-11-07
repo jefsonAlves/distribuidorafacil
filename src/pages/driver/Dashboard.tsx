@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, User } from "lucide-react";
+import { LogOut, Edit } from "lucide-react";
 import { AvailabilityToggle } from "@/components/driver/AvailabilityToggle";
 import { OrdersList } from "@/components/driver/OrdersList";
 import { NotificationBell } from "@/components/ui/NotificationBell";
@@ -97,8 +97,8 @@ const DriverDashboard = () => {
           <div className="flex items-center gap-2">
             {user && <NotificationBell userId={user.id} userRole="driver" />}
             <Button variant="ghost" size="sm" onClick={() => setProfileOpen(true)}>
-              <User className="h-4 w-4 mr-2" />
-              Perfil
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
             </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />

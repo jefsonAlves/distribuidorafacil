@@ -539,14 +539,18 @@ export type Database = {
       tenants: {
         Row: {
           banner_urls: string[] | null
+          business_hours: Json | null
           cnpj: string | null
           created_at: string
+          delivery_settings: Json | null
           domain: string | null
           email: string | null
           id: string
           logo_url: string | null
           name: string
+          payment_methods: Json | null
           phone: string | null
+          pix_key: string | null
           plan: string | null
           primary_color: string | null
           secondary_color: string | null
@@ -555,14 +559,18 @@ export type Database = {
         }
         Insert: {
           banner_urls?: string[] | null
+          business_hours?: Json | null
           cnpj?: string | null
           created_at?: string
+          delivery_settings?: Json | null
           domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
           name: string
+          payment_methods?: Json | null
           phone?: string | null
+          pix_key?: string | null
           plan?: string | null
           primary_color?: string | null
           secondary_color?: string | null
@@ -571,14 +579,18 @@ export type Database = {
         }
         Update: {
           banner_urls?: string[] | null
+          business_hours?: Json | null
           cnpj?: string | null
           created_at?: string
+          delivery_settings?: Json | null
           domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
           name?: string
+          payment_methods?: Json | null
           phone?: string | null
+          pix_key?: string | null
           plan?: string | null
           primary_color?: string | null
           secondary_color?: string | null

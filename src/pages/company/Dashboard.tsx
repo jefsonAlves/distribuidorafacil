@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Package, LogOut, Truck, Users, BarChart3, Activity, UserCircle, DollarSign } from "lucide-react";
+import { Package, LogOut, Truck, Users, BarChart3, Activity, UserCircle, DollarSign, Settings } from "lucide-react";
 import { ProductList } from "@/components/company/ProductList";
 import { DriversList } from "@/components/company/DriversList";
 import { OrdersManagement } from "@/components/company/OrdersManagement";
@@ -15,12 +15,14 @@ import { LiveOrdersPanel } from "@/components/company/LiveOrdersPanel";
 import { ClientsList } from "@/components/company/ClientsList";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { WalletDashboard } from "@/components/company/WalletDashboard";
+import { CompanySettingsDialog } from "@/components/company/CompanySettingsDialog";
 
 const CompanyDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [tenantId, setTenantId] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -90,7 +92,7 @@ const CompanyDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <Tabs defaultValue="visao-geral" className="w-full">
-            <TabsList className="grid w-full grid-cols-7 mb-8">
+            <TabsList className="grid w-full grid-cols-8 mb-8">
               <TabsTrigger value="visao-geral">
                 <Activity className="h-4 w-4 mr-2" />
                 Visão Geral
@@ -118,6 +120,10 @@ const CompanyDashboard = () => {
               <TabsTrigger value="relatorios">
                 <Users className="h-4 w-4 mr-2" />
                 Relatórios
+              </TabsTrigger>
+              <TabsTrigger value="configuracoes">
+                <Settings className="h-4 w-4 mr-2" />
+                Configurações
               </TabsTrigger>
             </TabsList>
 
@@ -161,9 +167,24 @@ const CompanyDashboard = () => {
                 </TabsContent>
               </Tabs>
             </TabsContent>
+
+            <TabsContent value="configuracoes">
+              <Button onClick={() => setSettingsOpen(true)}>
+                <Settings className="h-4 w-4 mr-2" />
+                Abrir Configurações
+              </Button>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
+
+      {tenantId && (
+        <CompanySettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          tenantId={tenantId}
+        />
+      )}
     </div>
   );
 };
