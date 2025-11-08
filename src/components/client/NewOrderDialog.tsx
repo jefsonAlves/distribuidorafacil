@@ -226,11 +226,16 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
     }
   };
 
+  const selectedTenantName = tenants.find(t => t.id === selectedTenant)?.name;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Pedido</DialogTitle>
+          {selectedTenantName && (
+            <p className="text-sm text-muted-foreground">Empresa: <span className="font-semibold text-foreground">{selectedTenantName}</span></p>
+          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">

@@ -15,6 +15,7 @@ const ClientDashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [clientId, setClientId] = useState<string>("");
   const [tenantId, setTenantId] = useState<string>("");
+  const [tenantName, setTenantName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
 
@@ -70,6 +71,19 @@ const ClientDashboard = () => {
       if (clientData) {
         setClientId(clientData.id);
         setTenantId(clientData.tenant_id);
+        
+        // Buscar nome da empresa se tiver tenant_id
+        if (clientData.tenant_id) {
+          const { data: tenantData } = await supabase
+            .from("tenants")
+            .select("name")
+            .eq("id", clientData.tenant_id)
+            .single();
+          
+          if (tenantData) {
+            setTenantName(tenantData.name);
+          }
+        }
       }
     } catch (error) {
       console.error("Erro ao verificar autenticação:", error);
@@ -153,8 +167,13 @@ const ClientDashboard = () => {
                   <Package className="h-10 w-10 text-[#EF5350]" />
                 </div>
                 <h2 className="text-3xl font-bold mb-4 text-[#333333]">Fazer Pedido</h2>
+                {tenantName && (
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Empresa: <span className="font-semibold text-[#EF5350]">{tenantName}</span>
+                  </p>
+                )}
                 <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">
-                  Clique no botão abaixo para criar um novo pedido de gás
+                  Clique no botão abaixo para criar um novo pedido
                 </p>
                 <Button 
                   size="lg" 
