@@ -239,10 +239,10 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* FASE 6: Seleção de Empresa */}
-          {!tenantId && tenants.length > 0 && (
-            <div>
-              <Label>Selecione a Empresa *</Label>
+          {/* Seleção de Empresa - SEMPRE PRIMEIRO */}
+          <div>
+            <Label>Selecione a Empresa *</Label>
+            {!tenantId && tenants.length > 0 ? (
               <Select value={selectedTenant} onValueChange={setSelectedTenant} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Escolha uma empresa" />
@@ -255,10 +255,16 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
+            ) : tenantId && selectedTenantName ? (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-semibold text-foreground">{selectedTenantName}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-2">Carregando empresas...</p>
+            )}
+          </div>
 
-          {/* Produtos */}
+          {/* Produtos - SÓ APARECEM APÓS SELEÇÃO DA EMPRESA */}
           <div>
             <Label>Selecione os Produtos</Label>
             {!selectedTenant && <p className="text-sm text-muted-foreground mt-2">Selecione uma empresa primeiro</p>}
