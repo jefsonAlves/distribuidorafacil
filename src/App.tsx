@@ -23,6 +23,7 @@ import CompanyDashboard from "./pages/company/Dashboard";
 import DriverDashboard from "./pages/driver/Dashboard";
 
 import NotFound from "./pages/NotFound";
+import NotAuthorized from "./pages/NotAuthorized";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,9 @@ const App = () => (
               </RequireAuth>
             }
           />
+          
+          {/* Not Authorized */}
+          <Route path="/403" element={<NotAuthorized />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

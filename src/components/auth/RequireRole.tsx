@@ -12,6 +12,7 @@ type RequireRoleProps = {
 export const RequireRole = ({ role, children }: RequireRoleProps) => {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState<boolean>(false);
+  const [hasSession, setHasSession] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -20,10 +21,15 @@ export const RequireRole = ({ role, children }: RequireRoleProps) => {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
         if (isMounted) {
+          setHasSession(false);
           setAuthorized(false);
           setLoading(false);
         }
         return;
+      }
+
+      if (isMounted) {
+        setHasSession(true);
       }
 
       const userId = sessionData.session.user.id;
@@ -51,7 +57,8 @@ export const RequireRole = ({ role, children }: RequireRoleProps) => {
   }, [role]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  if (!authorized) return <Navigate to="/auth/login" replace />;
+  if (!authorized && hasSession) return <Navigate to="/403" replace />;
+  if (!authorized && !hasSession) return <Navigate to="/auth/login" replace />;
   return children;
 };
 

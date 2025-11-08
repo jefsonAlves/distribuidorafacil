@@ -48,7 +48,19 @@ const Login = () => {
       } else if (userRoles.includes("company_admin")) {
         navigate("/company/dashboard");
       } else if (userRoles.includes("driver")) {
-        navigate("/driver/dashboard");
+        // Verificar se o registro de driver existe
+        const { data: driverData } = await supabase
+          .from("drivers")
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        
+        if (driverData) {
+          navigate("/driver/dashboard");
+        } else {
+          toast.warning("Perfil de entregador não configurado. Contate a empresa.");
+          navigate("/");
+        }
       } else if (userRoles.includes("client")) {
         navigate("/client/dashboard");
       } else {

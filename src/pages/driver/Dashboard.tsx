@@ -40,8 +40,8 @@ const DriverDashboard = () => {
         .single();
 
       if (driverError || !driverData) {
-        toast.error("Cadastro de entregador não encontrado. Entre em contato com o suporte.");
-        navigate("/auth/login");
+        toast.warning("Cadastro de entregador não encontrado. Entre em contato com a empresa.");
+        navigate("/");
         return;
       }
 
