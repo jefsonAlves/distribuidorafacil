@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { User, Search, ShoppingBag, Phone, Mail, Share2, Copy, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 interface ClientsListProps {
   tenantId: string;
