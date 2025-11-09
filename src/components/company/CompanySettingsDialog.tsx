@@ -130,6 +130,22 @@ export const CompanySettingsDialog = ({ open, onOpenChange, tenantId }: CompanyS
     try {
       setSubmitting(true);
 
+      // Validar slug único se foi alterado
+      if (slug) {
+        const { data: existingTenant } = await supabase
+          .from("tenants")
+          .select("id")
+          .eq("slug", slug)
+          .neq("id", tenantId)
+          .maybeSingle();
+
+        if (existingTenant) {
+          toast.error("Este slug já está em uso. Escolha outro.");
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from("tenants")
         .update({

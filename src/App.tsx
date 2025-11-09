@@ -16,6 +16,7 @@ import AdminLogin from "./pages/admin/Login";
 import AdminEmergencyReset from "./pages/admin/EmergencyReset";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminCompanies from "./pages/admin/Companies";
+import BootstrapAdmin from "./pages/admin/BootstrapAdmin";
 
 // Dashboards por tipo de usuário
 import ClientDashboard from "./pages/client/Dashboard";
@@ -44,6 +45,7 @@ const App = () => (
           {/* Admin Master */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/emergency-reset" element={<AdminEmergencyReset />} />
+          <Route path="/admin/bootstrap" element={<BootstrapAdmin />} />
           <Route
             path="/admin/dashboard"
             element={

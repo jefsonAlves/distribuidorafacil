@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +13,11 @@ type UserType = "company" | "driver" | "client";
 
 const Register = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const companySlug = searchParams.get("company");
   const [loading, setLoading] = useState(false);
   const [userType, setUserType] = useState<UserType>("client");
+  const [tenantId, setTenantId] = useState<string | null>(null);
   
   // Campos comuns
   const [email, setEmail] = useState("");
@@ -28,6 +31,40 @@ const Register = () => {
   const [companyName, setCompanyName] = useState("");
   const [vehicle, setVehicle] = useState("");
 
+  // Buscar tenant pelo slug se fornecido
+  useEffect(() => {
+    if (companySlug) {
+      fetchTenantBySlug();
+    }
+  }, [companySlug]);
+
+  const fetchTenantBySlug = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("id, name")
+        .eq("slug", companySlug)
+        .single();
+
+      if (error) {
+        console.error("Erro ao buscar empresa:", error);
+        toast.error("Empresa não encontrada. Verifique o link.");
+        navigate("/");
+        return;
+      }
+
+      if (data) {
+        setTenantId(data.id);
+        setUserType("client");
+        toast.success(`Cadastro para: ${data.name}`);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar tenant:", error);
+      toast.error("Erro ao carregar informações da empresa");
+      navigate("/");
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -37,6 +74,7 @@ const Register = () => {
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/login`,
           data: {
             full_name: fullName,
             user_type: userType,
@@ -50,6 +88,30 @@ const Register = () => {
       });
 
       if (error) throw error;
+
+      // Se for cliente via link, atualizar profile e adicionar role
+      if (companySlug && tenantId && data.user) {
+        const userId = data.user.id;
+
+        // Atualizar profile com tenant_id
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ tenant_id: tenantId })
+          .eq("id", userId);
+
+        if (profileError) {
+          console.error("Erro ao atualizar profile:", profileError);
+        }
+
+        // Inserir role client
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: userId, role: "client" });
+
+        if (roleError) {
+          console.error("Erro ao inserir role:", roleError);
+        }
+      }
 
       toast.success("Cadastro realizado com sucesso!");
       toast.info("Você será redirecionado para fazer login...");
@@ -91,32 +153,34 @@ const Register = () => {
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-6">
             {/* SELEÇÃO DE TIPO */}
-            <div className="space-y-3">
-              <Label className="text-[#333333] font-medium">Tipo de Cadastro</Label>
-              <RadioGroup value={userType} onValueChange={(value) => setUserType(value as UserType)}>
-                <div className="flex items-center space-x-3 border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-[#EF5350] hover:bg-[#EF5350]/5 transition-all duration-300">
-                  <RadioGroupItem value="client" id="client" className="border-[#EF5350] text-[#EF5350]" />
-                  <Label htmlFor="client" className="flex items-center gap-3 cursor-pointer flex-1">
-                    <User className="h-6 w-6 text-[#EF5350]" />
-                    <div>
-                      <div className="font-semibold text-[#333333]">Cliente</div>
-                      <div className="text-sm text-gray-600">Fazer pedidos</div>
-                    </div>
-                  </Label>
-                </div>
+            {!companySlug && (
+              <div className="space-y-3">
+                <Label className="text-[#333333] font-medium">Tipo de Cadastro</Label>
+                <RadioGroup value={userType} onValueChange={(value) => setUserType(value as UserType)}>
+                  <div className="flex items-center space-x-3 border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-[#EF5350] hover:bg-[#EF5350]/5 transition-all duration-300">
+                    <RadioGroupItem value="client" id="client" className="border-[#EF5350] text-[#EF5350]" />
+                    <Label htmlFor="client" className="flex items-center gap-3 cursor-pointer flex-1">
+                      <User className="h-6 w-6 text-[#EF5350]" />
+                      <div>
+                        <div className="font-semibold text-[#333333]">Cliente</div>
+                        <div className="text-sm text-gray-600">Fazer pedidos</div>
+                      </div>
+                    </Label>
+                  </div>
 
-                <div className="flex items-center space-x-3 border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-[#264653] hover:bg-[#264653]/5 transition-all duration-300">
-                  <RadioGroupItem value="company" id="company" className="border-[#264653] text-[#264653]" />
-                  <Label htmlFor="company" className="flex items-center gap-3 cursor-pointer flex-1">
-                    <Building2 className="h-6 w-6 text-[#264653]" />
-                    <div>
-                      <div className="font-semibold text-[#333333]">Empresa</div>
-                      <div className="text-sm text-gray-600">Gerenciar negócio</div>
-                    </div>
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+                  <div className="flex items-center space-x-3 border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-[#264653] hover:bg-[#264653]/5 transition-all duration-300">
+                    <RadioGroupItem value="company" id="company" className="border-[#264653] text-[#264653]" />
+                    <Label htmlFor="company" className="flex items-center gap-3 cursor-pointer flex-1">
+                      <Building2 className="h-6 w-6 text-[#264653]" />
+                      <div>
+                        <div className="font-semibold text-[#333333]">Empresa</div>
+                        <div className="text-sm text-gray-600">Gerenciar negócio</div>
+                      </div>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
 
             {/* CAMPOS COMUNS */}
             <div className="space-y-4">

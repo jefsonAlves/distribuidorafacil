@@ -117,7 +117,7 @@ export const ClientsList = ({ tenantId }: ClientsListProps) => {
 
   const getRegistrationLink = () => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/register?company=${tenantSlug}`;
+    return `${baseUrl}/auth/register?company=${tenantSlug}`;
   };
 
   const copyRegistrationLink = async () => {
