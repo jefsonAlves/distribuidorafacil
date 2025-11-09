@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { User, Search, ShoppingBag, Phone, Mail } from "lucide-react";
+import { User, Search, ShoppingBag, Phone, Mail, Share2, Copy, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -19,10 +19,28 @@ export const ClientsList = ({ tenantId }: ClientsListProps) => {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [clientOrders, setClientOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [tenantSlug, setTenantSlug] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchClients();
+    fetchTenantSlug();
   }, [tenantId]);
+
+  const fetchTenantSlug = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("slug")
+        .eq("id", tenantId)
+        .single();
+
+      if (error) throw error;
+      setTenantSlug(data?.slug || "");
+    } catch (error) {
+      console.error("Erro ao buscar slug:", error);
+    }
+  };
 
   const fetchClients = async () => {
     setLoading(true);
@@ -96,6 +114,22 @@ export const ClientsList = ({ tenantId }: ClientsListProps) => {
     return { totalSpent, avgTicket, cancelRate };
   };
 
+  const getRegistrationLink = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/register?company=${tenantSlug}`;
+  };
+
+  const copyRegistrationLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getRegistrationLink());
+      setCopied(true);
+      toast.success("Link copiado para a área de transferência!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error("Erro ao copiar link");
+    }
+  };
+
   const filteredClients = clients.filter((client) =>
     client.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,7 +161,29 @@ export const ClientsList = ({ tenantId }: ClientsListProps) => {
             className="pl-10"
           />
         </div>
+        {tenantSlug && (
+          <Button onClick={copyRegistrationLink} variant="default" className="gap-2">
+            {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+            {copied ? "Copiado!" : "Compartilhar Link"}
+          </Button>
+        )}
       </div>
+
+      {tenantSlug && (
+        <Card className="bg-muted/50">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium mb-1">Link de Cadastro de Clientes</p>
+                <code className="text-xs text-muted-foreground break-all">{getRegistrationLink()}</code>
+              </div>
+              <Button onClick={copyRegistrationLink} variant="ghost" size="icon">
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <Card>

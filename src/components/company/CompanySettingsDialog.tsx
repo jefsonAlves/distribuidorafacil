@@ -46,6 +46,7 @@ export const CompanySettingsDialog = ({ open, onOpenChange, tenantId }: CompanyS
   const [cnpj, setCnpj] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [slug, setSlug] = useState("");
   
   // Personalização
   const [primaryColor, setPrimaryColor] = useState("#3b82f6");
@@ -101,6 +102,7 @@ export const CompanySettingsDialog = ({ open, onOpenChange, tenantId }: CompanyS
         setCnpj(data.cnpj || "");
         setEmail(data.email || "");
         setPhone(data.phone || "");
+        setSlug(data.slug || "");
         setPrimaryColor(data.primary_color || "#3b82f6");
         setSecondaryColor(data.secondary_color || "#f59e0b");
         setLogoUrl(data.logo_url || "");
@@ -135,6 +137,7 @@ export const CompanySettingsDialog = ({ open, onOpenChange, tenantId }: CompanyS
           cnpj,
           email,
           phone,
+          slug,
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           logo_url: logoUrl,
@@ -237,6 +240,18 @@ export const CompanySettingsDialog = ({ open, onOpenChange, tenantId }: CompanyS
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="slug">Slug/Subdomínio</Label>
+                <Input
+                  id="slug"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="minha-empresa"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Link de cadastro: {window.location.origin}/register?company={slug || "seu-slug"}
+                </p>
               </div>
             </TabsContent>
 
