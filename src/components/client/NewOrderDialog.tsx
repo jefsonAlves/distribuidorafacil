@@ -12,7 +12,8 @@ interface NewOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientId: string;
-  tenantId?: string; // FASE 6: Opcional - cliente pode escolher empresa
+  tenantId: string; // OBRIGATÓRIO - cliente vinculado a uma empresa
+  tenantName: string; // Nome da empresa para exibição
   onSuccess: () => void;
 }
 
@@ -23,14 +24,10 @@ interface CartItem {
   quantity: number;
 }
 
-export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSuccess }: NewOrderDialogProps) => {
+export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, tenantName, onSuccess }: NewOrderDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  
-  // FASE 6: Multi-tenant - lista de empresas
-  const [tenants, setTenants] = useState<any[]>([]);
-  const [selectedTenant, setSelectedTenant] = useState(tenantId || "");
   
   const [address, setAddress] = useState({
     street: "",
@@ -46,58 +43,22 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
 
   useEffect(() => {
     if (open) {
-      fetchTenants();
+      fetchProducts();
       fetchClientAddress();
     }
   }, [open]);
 
-  useEffect(() => {
-    if (selectedTenant) {
-      fetchProducts();
-    }
-  }, [selectedTenant]);
-
-  // FASE 6: Buscar empresas ativas
-  const fetchTenants = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("tenants")
-        .select("id, name")
-        .eq("status", "ACTIVE")
-        .order("name");
-
-      if (error) throw error;
-      setTenants(data || []);
-      
-      // Se tenantId foi passado, usar ele
-      if (tenantId) {
-        setSelectedTenant(tenantId);
-      } else if (data && data.length > 0) {
-        // Senão, selecionar primeira empresa
-        setSelectedTenant(data[0].id);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar empresas:", error);
-      toast.error("Erro ao carregar empresas");
-    }
-  };
-
   const fetchProducts = async () => {
-    if (!selectedTenant) return;
-    
     try {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("tenant_id", selectedTenant)
+        .eq("tenant_id", tenantId)
         .eq("active", true)
         .gt("stock", 0);
 
       if (error) throw error;
       setProducts(data || []);
-      
-      // Limpar carrinho ao trocar de empresa
-      setCart([]);
     } catch (error: any) {
       console.error("Erro ao buscar produtos:", error);
       toast.error("Erro ao carregar produtos");
@@ -161,11 +122,6 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
     e.preventDefault();
     e.stopPropagation();
     
-    if (!selectedTenant) {
-      toast.error("Selecione uma empresa");
-      return;
-    }
-    
     if (cart.length === 0) {
       toast.error("Adicione pelo menos um produto ao carrinho");
       return;
@@ -184,7 +140,7 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
-          tenant_id: selectedTenant,
+          tenant_id: tenantId,
           client_id: clientId,
           total,
           payment_method: paymentMethod as any,
@@ -226,50 +182,22 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, onSucce
     }
   };
 
-  const selectedTenantName = tenants.find(t => t.id === selectedTenant)?.name;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Pedido</DialogTitle>
-          {selectedTenantName && (
-            <p className="text-sm text-muted-foreground">Empresa: <span className="font-semibold text-foreground">{selectedTenantName}</span></p>
-          )}
+          <p className="text-sm text-muted-foreground">
+            Empresa: <span className="font-semibold text-foreground">{tenantName}</span>
+          </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Seleção de Empresa - SEMPRE PRIMEIRO */}
-          <div>
-            <Label>Selecione a Empresa *</Label>
-            {!tenantId && tenants.length > 0 ? (
-              <Select value={selectedTenant} onValueChange={setSelectedTenant} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Escolha uma empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tenants.map((tenant) => (
-                    <SelectItem key={tenant.id} value={tenant.id}>
-                      {tenant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : tenantId && selectedTenantName ? (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="font-semibold text-foreground">{selectedTenantName}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-2">Carregando empresas...</p>
-            )}
-          </div>
-
-          {/* Produtos - SÓ APARECEM APÓS SELEÇÃO DA EMPRESA */}
+          {/* Produtos */}
           <div>
             <Label>Selecione os Produtos</Label>
-            {!selectedTenant && <p className="text-sm text-muted-foreground mt-2">Selecione uma empresa primeiro</p>}
-            {selectedTenant && products.length === 0 && <p className="text-sm text-muted-foreground mt-2">Nenhum produto disponível</p>}
-            {selectedTenant && products.length > 0 && (
+            {products.length === 0 && <p className="text-sm text-muted-foreground mt-2">Nenhum produto disponível</p>}
+            {products.length > 0 && (
               <div className="grid gap-2 mt-2">
               {products.map(product => (
                 <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">

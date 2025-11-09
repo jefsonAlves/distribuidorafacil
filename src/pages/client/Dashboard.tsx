@@ -45,27 +45,9 @@ const ClientDashboard = () => {
 
       // Se não existe, criar registro
       if (!clientData) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, email, phone, cpf")
-          .eq("id", session.user.id)
-          .single();
-
-        const { data: newClient, error: insertError } = await supabase
-          .from("clients")
-          .insert({
-            user_id: session.user.id,
-            full_name: profile?.full_name || "",
-            email: profile?.email || session.user.email || "",
-            phone: profile?.phone || "",
-            cpf: profile?.cpf || "",
-          })
-          .select("id, tenant_id")
-          .single();
-
-        if (insertError) throw insertError;
-        clientData = newClient;
-        toast.success("Perfil criado com sucesso!");
+        toast.error("Cliente não encontrado. Por favor, complete seu cadastro através do link fornecido pela empresa.");
+        navigate("/");
+        return;
       }
 
       if (clientData) {
@@ -195,12 +177,13 @@ const ClientDashboard = () => {
             </TabsContent>
           </Tabs>
 
-          {clientId && (
+          {clientId && tenantId && (
             <NewOrderDialog
               open={orderDialogOpen}
               onOpenChange={setOrderDialogOpen}
               clientId={clientId}
               tenantId={tenantId}
+              tenantName={tenantName}
               onSuccess={() => {
                 toast.success("Pedido criado com sucesso!");
               }}
