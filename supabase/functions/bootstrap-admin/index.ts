@@ -37,17 +37,19 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar ou criar usuário
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
     let userId: string;
     let userExists = false;
 
-    const existingUser = existingUsers?.users.find(u => u.email === email);
+    // Tentar atualizar primeiro (assumindo que o usuário existe)
+    // Buscar usuário pelo email usando query direta
+    const { data: authUsers, error: listError } = await supabase.auth.admin.listUsers();
+    
+    const existingUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
     if (existingUser) {
       userId = existingUser.id;
       userExists = true;
-      console.log(`User exists: ${userId}`);
+      console.log(`User found: ${userId}, updating password...`);
 
       // Atualizar senha
       const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
@@ -61,6 +63,7 @@ Deno.serve(async (req) => {
       }
       console.log('Password updated successfully');
     } else {
+      console.log('User not found, creating new user...');
       // Criar novo usuário
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email,
