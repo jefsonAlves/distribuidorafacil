@@ -63,8 +63,13 @@ export const DriversList = ({ tenantId }: DriversListProps) => {
     return <div className="text-center py-8">Carregando motoristas...</div>;
   }
 
-  const activeDrivers = drivers.filter(d => d.status === 'ACTIVE');
-  const inactiveDrivers = drivers.filter(d => d.status === 'INACTIVE');
+  // Filtrar motoristas por status (ACTIVE, ONLINE, IN_SERVICE são considerados disponíveis)
+  const activeDrivers = drivers.filter(d => 
+    d.status === 'ACTIVE' || d.status === 'ONLINE' || d.status === 'IN_SERVICE'
+  );
+  const inactiveDrivers = drivers.filter(d => 
+    d.status === 'INACTIVE' || (!d.status || (d.status !== 'ACTIVE' && d.status !== 'ONLINE' && d.status !== 'IN_SERVICE'))
+  );
 
   return (
     <>

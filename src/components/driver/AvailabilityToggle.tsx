@@ -23,15 +23,22 @@ export const AvailabilityToggle = ({ driverId, tenantId }: AvailabilityTogglePro
     try {
       const { data, error } = await supabase
         .from("drivers")
-        .select("status")
+        .select("status, user_id")
         .eq("id", driverId)
         .single();
 
-      if (error) throw error;
-      setIsAvailable(data.status === 'ACTIVE');
+      if (error) {
+        console.error("Erro ao buscar status do motorista:", error);
+        toast.error("Erro ao carregar status");
+        return;
+      }
+
+      // Verificar se o status é ACTIVE, ONLINE ou IN_SERVICE
+      const isActiveStatus = data.status === 'ACTIVE' || data.status === 'ONLINE' || data.status === 'IN_SERVICE';
+      setIsAvailable(isActiveStatus);
 
       // Buscar sessão ativa se houver
-      if (data.status === 'ACTIVE') {
+      if (isActiveStatus) {
         const { data: sessionData } = await supabase
           .from("driver_sessions")
           .select("id")
@@ -47,6 +54,7 @@ export const AvailabilityToggle = ({ driverId, tenantId }: AvailabilityTogglePro
       }
     } catch (error: any) {
       console.error("Erro ao buscar status:", error);
+      toast.error("Erro ao carregar status do motorista");
     }
   };
 
@@ -56,12 +64,29 @@ export const AvailabilityToggle = ({ driverId, tenantId }: AvailabilityTogglePro
       const newStatus = isAvailable ? 'INACTIVE' : 'ACTIVE';
 
       // Atualizar status do motorista
-      const { error: updateError } = await supabase
+      const { data: updatedDriver, error: updateError } = await supabase
         .from("drivers")
         .update({ status: newStatus })
-        .eq("id", driverId);
+        .eq("id", driverId)
+        .select("status")
+        .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Erro ao atualizar status:", updateError);
+        // Verificar se é erro de permissão RLS
+        if (updateError.code === '42501' || updateError.message?.includes('permission denied')) {
+          toast.error("Sem permissão para alterar status. Entre em contato com a empresa.");
+        } else {
+          toast.error("Erro ao alterar disponibilidade: " + updateError.message);
+        }
+        return;
+      }
+
+      // Atualizar estado local com o status retornado
+      if (updatedDriver) {
+        const isActiveStatus = updatedDriver.status === 'ACTIVE' || updatedDriver.status === 'ONLINE' || updatedDriver.status === 'IN_SERVICE';
+        setIsAvailable(isActiveStatus);
+      }
 
       if (newStatus === 'ACTIVE') {
         // Iniciar nova sessão

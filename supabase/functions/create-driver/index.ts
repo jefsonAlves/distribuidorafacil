@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.77.0'
+import { createDriverSchema } from './validation.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,6 +35,23 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Validar entrada com Zod
+    const body = await req.json()
+    const validationResult = createDriverSchema.safeParse(body)
+
+    if (!validationResult.success) {
+      return new Response(JSON.stringify({ 
+        error: 'Dados inválidos',
+        details: validationResult.error.errors.map(e => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const { 
       email, 
       password, 
@@ -43,14 +61,7 @@ Deno.serve(async (req) => {
       vehicle, 
       plate, 
       tenant_id 
-    } = await req.json()
-
-    if (!email || !password || !full_name || !phone || !cpf || !vehicle || !tenant_id) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
+    } = validationResult.data
 
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
@@ -114,7 +125,7 @@ Deno.serve(async (req) => {
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
-    // Criar ou atualizar profile
+    // Criar ou atualizar profile (SEM campo role - role está em user_roles)
     const { error: profileUpdateError } = await supabaseClient
       .from('profiles')
       .upsert({
@@ -123,8 +134,8 @@ Deno.serve(async (req) => {
         full_name: full_name,
         phone: phone,
         cpf: cpf,
-        role: 'driver',
         tenant_id: tenant_id,
+        user_type: 'driver',
       }, {
         onConflict: 'id'
       })

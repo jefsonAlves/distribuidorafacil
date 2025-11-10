@@ -1,8 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.77.0'
+import { resetPasswordSchema } from './validation.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' } })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
@@ -16,7 +22,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       })
     }
 
@@ -27,33 +33,43 @@ Deno.serve(async (req) => {
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       })
     }
 
-    // Check if user is admin_master
-    const { data: profile, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // Check if user is admin_master using user_roles table
+    // Use SECURITY DEFINER function has_role() for secure role checking
+    const { data: hasRole, error: roleError } = await supabaseClient
+      .rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin_master'
+      })
 
-    if (profileError || profile?.role !== 'admin_master') {
+    if (roleError || !hasRole) {
       return new Response(JSON.stringify({ error: 'Forbidden - Admin master only' }), {
         status: 403,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       })
     }
 
-    // Get request body
-    const { email, password } = await req.json()
+    // Validar entrada com Zod
+    const body = await req.json()
+    const validationResult = resetPasswordSchema.safeParse(body)
 
-    if (!email || !password) {
-      return new Response(JSON.stringify({ error: 'Email and password required' }), {
+    if (!validationResult.success) {
+      return new Response(JSON.stringify({ 
+        error: 'Dados inválidos',
+        details: validationResult.error.errors.map(e => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       })
     }
+
+    const { email, password } = validationResult.data
 
     // Get user by email
     const { data: targetUser, error: getUserError } = await supabaseClient.auth.admin.listUsers()

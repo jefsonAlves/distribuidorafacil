@@ -132,41 +132,52 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, tenantN
       return;
     }
 
+    // Validar endereço
+    if (!address.street || !address.number || !address.neighborhood || !address.city || !address.state) {
+      toast.error("Preencha todos os campos obrigatórios do endereço");
+      return;
+    }
+
     setLoading(true);
     try {
       const total = calculateTotal();
 
-      // Criar pedido
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          tenant_id: tenantId,
-          client_id: clientId,
-          total,
-          payment_method: paymentMethod as any,
-          change_for: paymentMethod === "CASH" && changeFor ? parseFloat(changeFor) : null,
-          address: address as any,
-          status: "PENDENTE" as any,
-        })
-        .select()
-        .single();
+      // Validar endereço completo
+      const validatedAddress = {
+        street: address.street.trim(),
+        number: address.number.trim(),
+        complement: address.complement?.trim() || null,
+        neighborhood: address.neighborhood.trim(),
+        city: address.city.trim(),
+        state: address.state.trim().toUpperCase(),
+        zipCode: address.zipCode?.trim() || null,
+      };
 
-      if (orderError) throw orderError;
-
-      // Criar itens do pedido
+      // Preparar itens do pedido
       const orderItems = cart.map(item => ({
-        order_id: orderData.id,
         product_id: item.productId,
         name: item.name,
         quantity: item.quantity,
         unit_price: item.price,
       }));
 
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
+      // Usar função edge para criar pedido com validação no servidor
+      const { data, error } = await supabase.functions.invoke('create-order', {
+        body: {
+          tenant_id: tenantId,
+          client_id: clientId,
+          total,
+          payment_method: paymentMethod,
+          change_for: paymentMethod === "CASH" && changeFor ? parseFloat(changeFor) : null,
+          address: validatedAddress,
+          items: orderItems,
+        },
+      });
 
-      if (itemsError) throw itemsError;
+      if (error) throw error;
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       toast.success("Pedido criado com sucesso!");
       onSuccess();
@@ -176,7 +187,8 @@ export const NewOrderDialog = ({ open, onOpenChange, clientId, tenantId, tenantN
       setChangeFor("");
     } catch (error: any) {
       console.error("Erro ao criar pedido:", error);
-      toast.error("Erro ao criar pedido: " + (error.message || "Erro desconhecido"));
+      const errorMessage = error.message || error.error || "Erro desconhecido";
+      toast.error("Erro ao criar pedido: " + errorMessage);
     } finally {
       setLoading(false);
     }
