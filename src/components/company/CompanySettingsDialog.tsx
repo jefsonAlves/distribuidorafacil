@@ -14,6 +14,7 @@ interface CompanySettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tenantId: string;
+  isAdminMaster?: boolean;
 }
 
 interface BusinessHours {
@@ -37,7 +38,7 @@ interface DeliverySettings {
   min_order_value: number;
 }
 
-export const CompanySettingsDialog = ({ open, onOpenChange, tenantId }: CompanySettingsDialogProps) => {
+export const CompanySettingsDialog = ({ open, onOpenChange, tenantId, isAdminMaster = false }: CompanySettingsDialogProps) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
@@ -200,15 +201,17 @@ export const CompanySettingsDialog = ({ open, onOpenChange, tenantId }: CompanyS
           </div>
         ) : (
           <Tabs defaultValue="dados" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className={`grid w-full ${isAdminMaster ? 'grid-cols-5' : 'grid-cols-4'}`}>
               <TabsTrigger value="dados">
                 <Building2 className="h-4 w-4 mr-2" />
                 Dados
               </TabsTrigger>
-              <TabsTrigger value="visual">
-                <Palette className="h-4 w-4 mr-2" />
-                Visual
-              </TabsTrigger>
+              {isAdminMaster && (
+                <TabsTrigger value="visual">
+                  <Palette className="h-4 w-4 mr-2" />
+                  Visual
+                </TabsTrigger>
+              )}
               <TabsTrigger value="horarios">
                 <Clock className="h-4 w-4 mr-2" />
                 Horários
@@ -271,53 +274,55 @@ export const CompanySettingsDialog = ({ open, onOpenChange, tenantId }: CompanyS
               </div>
             </TabsContent>
 
-            <TabsContent value="visual" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="logoUrl">URL do Logo</Label>
-                <Input
-                  id="logoUrl"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://exemplo.com/logo.png"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            {isAdminMaster && (
+              <TabsContent value="visual" className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Cor Primária</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="primaryColor"
-                      type="color"
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value)}
-                      className="w-20"
-                    />
-                    <Input
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value)}
-                      placeholder="#3b82f6"
-                    />
+                  <Label htmlFor="logoUrl">URL do Logo</Label>
+                  <Input
+                    id="logoUrl"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="https://exemplo.com/logo.png"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="primaryColor">Cor Primária</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="primaryColor"
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="w-20"
+                      />
+                      <Input
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        placeholder="#3b82f6"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="secondaryColor">Cor Secundária</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="secondaryColor"
+                        type="color"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="w-20"
+                      />
+                      <Input
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        placeholder="#f59e0b"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="secondaryColor">Cor Secundária</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="secondaryColor"
-                      type="color"
-                      value={secondaryColor}
-                      onChange={(e) => setSecondaryColor(e.target.value)}
-                      className="w-20"
-                    />
-                    <Input
-                      value={secondaryColor}
-                      onChange={(e) => setSecondaryColor(e.target.value)}
-                      placeholder="#f59e0b"
-                    />
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
+              </TabsContent>
+            )}
 
             <TabsContent value="horarios" className="space-y-4 mt-4">
               {Object.entries(businessHours).map(([day, hours]) => (

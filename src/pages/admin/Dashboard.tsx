@@ -47,13 +47,19 @@ const AdminDashboard = () => {
         return;
       }
 
-      const { data: profile } = await (supabase
-        .from("profiles") as any)
+      // Verificar role usando user_roles
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
         .select("role")
-        .eq("id", session.user.id)
-        .single();
+        .eq("user_id", session.user.id);
 
-      if (profile?.role !== "admin_master") {
+      if (rolesError || !roles) {
+        navigate("/admin/login");
+        return;
+      }
+
+      const hasAdminMaster = roles.some((r: any) => r.role === "admin_master");
+      if (!hasAdminMaster) {
         navigate("/admin/login");
       }
     } catch (error) {

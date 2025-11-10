@@ -23,6 +23,7 @@ const CompanyDashboard = () => {
   const [tenantId, setTenantId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isAdminMaster, setIsAdminMaster] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -38,6 +39,17 @@ const CompanyDashboard = () => {
       }
 
       setUser(session.user);
+
+      // Verificar se é admin_master
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id);
+
+      if (!rolesError && roles) {
+        const hasAdminMaster = roles.some((r: any) => r.role === "admin_master");
+        setIsAdminMaster(hasAdminMaster);
+      }
 
       // Buscar tenant_id do perfil
       const { data: profileData, error: profileError } = await supabase
@@ -92,7 +104,7 @@ const CompanyDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <Tabs defaultValue="visao-geral" className="w-full">
-            <TabsList className="grid w-full grid-cols-8 mb-8">
+            <TabsList className={`grid w-full mb-8 ${isAdminMaster ? 'grid-cols-8' : 'grid-cols-7'}`}>
               <TabsTrigger value="visao-geral">
                 <Activity className="h-4 w-4 mr-2" />
                 Visão Geral
@@ -121,10 +133,12 @@ const CompanyDashboard = () => {
                 <Users className="h-4 w-4 mr-2" />
                 Relatórios
               </TabsTrigger>
-              <TabsTrigger value="configuracoes">
-                <Settings className="h-4 w-4 mr-2" />
-                Configurações
-              </TabsTrigger>
+              {isAdminMaster && (
+                <TabsTrigger value="configuracoes">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configurações
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="visao-geral">
@@ -168,21 +182,24 @@ const CompanyDashboard = () => {
               </Tabs>
             </TabsContent>
 
-            <TabsContent value="configuracoes">
-              <Button onClick={() => setSettingsOpen(true)}>
-                <Settings className="h-4 w-4 mr-2" />
-                Abrir Configurações
-              </Button>
-            </TabsContent>
+            {isAdminMaster && (
+              <TabsContent value="configuracoes">
+                <Button onClick={() => setSettingsOpen(true)}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Abrir Configurações
+                </Button>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
 
-      {tenantId && (
+      {tenantId && isAdminMaster && (
         <CompanySettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           tenantId={tenantId}
+          isAdminMaster={isAdminMaster}
         />
       )}
     </div>

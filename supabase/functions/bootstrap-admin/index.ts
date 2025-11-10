@@ -84,19 +84,19 @@ Deno.serve(async (req) => {
       console.log(`User created: ${userId}`);
     }
 
-    // Garantir profile existe
+    // Garantir profile existe (sem campo role, pois role está em user_roles)
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
         id: userId,
         email: email,
-        full_name: 'Admin Master',
-        user_type: 'admin_master'
+        full_name: 'Admin Master'
       }, { onConflict: 'id' });
 
     if (profileError) {
       console.error('Error upserting profile:', profileError);
-      throw profileError;
+      // Não falhar se profile já existe - apenas continuar
+      console.log('Profile error (non-fatal):', profileError);
     }
 
     // Garantir role admin_master

@@ -39,40 +39,14 @@ const LandingPage = () => {
   }, []);
 
   const handleAction = (action: 'pedido' | 'saiba-mais') => {
-    if (isAuthenticated) {
-      // Se autenticado, redirecionar baseado no tipo de usuário
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .then(({ data: roles }) => {
-              if (roles && roles.length > 0) {
-                const userRoles = roles.map(r => r.role);
-                if (userRoles.includes("client")) {
-                  navigate("/client/dashboard");
-                } else if (userRoles.includes("company_admin")) {
-                  navigate("/company/dashboard");
-                } else if (userRoles.includes("driver")) {
-                  navigate("/driver/dashboard");
-                } else {
-                  navigate("/auth/login");
-                }
-              } else {
-                navigate("/auth/login");
-              }
-            });
-        } else {
-          navigate("/auth/login");
-        }
-      });
+    // Sempre redirecionar para login quando clicar em "Fazer Pedido" ou "Pedidos"
+    if (action === 'pedido') {
+      navigate("/auth/login");
     } else {
-      // Se não autenticado, redirecionar para login ou cadastro
-      if (action === 'pedido') {
-        navigate("/auth/register", { state: { redirectTo: "/client/dashboard" } });
-      } else {
-        navigate("/auth/login");
+      // Para "Saiba Mais", fazer scroll suave para a seção de serviços
+      const servicosSection = document.getElementById('servicos');
+      if (servicosSection) {
+        servicosSection.scrollIntoView({ behavior: 'smooth' });
       }
     }
   };
