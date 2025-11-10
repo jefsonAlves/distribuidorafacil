@@ -20,7 +20,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   useEffect(() => {
     fetchOrders();
 
-    // Realtime para novos pedidos
+    // Realtime para novos pedidos (todos os pedidos ACEITOS ou atribuídos a este driver)
     const channel = supabase
       .channel('driver-orders')
       .on(
@@ -28,8 +28,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
         {
           event: '*',
           schema: 'public',
-          table: 'orders',
-          filter: `assigned_driver=eq.${driverId}`
+          table: 'orders'
         },
         () => {
           fetchOrders();
@@ -44,13 +43,37 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
 
   const fetchOrders = async () => {
     try {
-      const { data, error } = await supabase
+      // Buscar pedidos onde:
+      // 1. Status ACEITO sem driver atribuído (disponíveis para todos)
+      // 2. OU atribuídos a este driver com status EM_PREPARO, A_CAMINHO, NA_PORTA
+      const { data: availableOrders, error: error1 } = await supabase
         .from("orders")
         .select(`
           *,
           clients (
             full_name,
-            phone
+            phone,
+            tenant_id
+          ),
+          order_items (
+            id,
+            name,
+            quantity,
+            unit_price
+          )
+        `)
+        .eq("status", "ACEITO")
+        .is("assigned_driver", null)
+        .order("created_at", { ascending: true });
+
+      const { data: assignedOrders, error: error2 } = await supabase
+        .from("orders")
+        .select(`
+          *,
+          clients (
+            full_name,
+            phone,
+            tenant_id
           ),
           order_items (
             id,
@@ -60,11 +83,18 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           )
         `)
         .eq("assigned_driver", driverId)
-        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA"])
+        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "PENDENTE"])
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setOrders(data || []);
+      if (error1 || error2) throw error1 || error2;
+      
+      // Combinar e remover duplicatas
+      const combined = [...(availableOrders || []), ...(assignedOrders || [])];
+      const unique = combined.filter((order, index, self) => 
+        index === self.findIndex(o => o.id === order.id)
+      );
+      
+      setOrders(unique);
     } catch (error: any) {
       console.error("Erro ao buscar pedidos:", error);
       toast.error("Erro ao carregar pedidos");
@@ -75,10 +105,11 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      ACEITO: { label: "Aceito", variant: "secondary" },
+      ACEITO: { label: "Disponível", variant: "secondary" },
       EM_PREPARO: { label: "Preparando", variant: "default" },
       A_CAMINHO: { label: "A Caminho", variant: "default" },
       NA_PORTA: { label: "Na Porta", variant: "default" },
+      PENDENTE: { label: "Pendente", variant: "destructive" },
     };
     const config = statusMap[status] || { label: status, variant: "outline" };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -107,7 +138,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   return (
     <>
       <Card className="p-6">
-        <h2 className="text-2xl font-bold mb-6">Pedidos Atribuídos</h2>
+        <h2 className="text-2xl font-bold mb-6">Pedidos Disponíveis e Atribuídos</h2>
         <div className="space-y-4">
           {orders.map((order) => (
             <Card key={order.id} className="p-4 hover:shadow-lg transition-shadow">
@@ -159,6 +190,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
 
       <OrderDetailsDialog
         order={selectedOrder}
+        driverId={driverId}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         onStatusUpdate={fetchOrders}

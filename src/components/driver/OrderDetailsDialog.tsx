@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,32 +16,81 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MapPin, Phone, User, Package, DollarSign, CreditCard, Clock, CheckCircle2 } from "lucide-react";
+import { MapPin, Phone, User, Package, DollarSign, CreditCard, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface OrderDetailsDialogProps {
   order: any;
+  driverId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onStatusUpdate: () => void;
 }
 
-export const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdate }: OrderDetailsDialogProps) => {
+export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStatusUpdate }: OrderDetailsDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showPendingDialog, setShowPendingDialog] = useState(false);
+  const [pendingReason, setPendingReason] = useState("");
 
   if (!order) return null;
 
+  const isAvailable = order.status === "ACEITO" && !order.assigned_driver;
+  const isAssignedToMe = order.assigned_driver === driverId;
+
+  const acceptOrder = async () => {
+    setLoading(true);
+    try {
+      // Verificar se ainda está disponível
+      const { data: currentOrder } = await supabase
+        .from("orders")
+        .select("assigned_driver")
+        .eq("id", order.id)
+        .single();
+
+      if (currentOrder?.assigned_driver) {
+        toast.error("Este pedido já foi aceito por outro entregador");
+        onStatusUpdate();
+        onOpenChange(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          assigned_driver: driverId,
+          accepted_at: new Date().toISOString()
+        })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      toast.success("🎉 Pedido aceito! Você pode iniciar a entrega.");
+      onStatusUpdate();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Erro ao aceitar pedido:", error);
+      toast.error("Erro ao aceitar pedido");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateOrderStatus = async (newStatus: string) => {
-    // Se for mudar para ENTREGUE, mostrar confirmação
+    // Se for mudar para ENTREGUE, verificar forma de pagamento
     if (newStatus === "ENTREGUE") {
-      setShowConfirmDialog(true);
+      if (order.payment_method === "DINHEIRO") {
+        setShowPaymentDialog(true);
+      } else {
+        setShowConfirmDialog(true);
+      }
       return;
     }
 
     await performStatusUpdate(newStatus);
   };
 
-  const performStatusUpdate = async (newStatus: string) => {
+  const performStatusUpdate = async (newStatus: string, paymentReceived?: boolean) => {
     setLoading(true);
     try {
       const updates: any = { status: newStatus };
@@ -52,6 +103,9 @@ export const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdate }
         updates.at_door_at = new Date().toISOString();
       } else if (newStatus === "ENTREGUE") {
         updates.delivered_at = new Date().toISOString();
+        updates.payment_status = "PAID";
+      } else if (newStatus === "PENDENTE") {
+        updates.cancel_reason = pendingReason;
       }
 
       const { error } = await supabase
@@ -64,20 +118,32 @@ export const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdate }
       const statusMessages: Record<string, string> = {
         EM_PREPARO: "Pedido marcado como em preparo",
         A_CAMINHO: "Entrega iniciada! Boa viagem!",
-        NA_PORTA: "Chegada registrada",
-        ENTREGUE: "🎉 Entrega concluída! Valor creditado na carteira da empresa."
+        NA_PORTA: "Chegada registrada no local",
+        ENTREGUE: "🎉 Entrega concluída! Valor creditado na carteira da empresa.",
+        PENDENTE: "Entrega marcada como pendente"
       };
 
       toast.success(statusMessages[newStatus] || "Status atualizado!");
       onStatusUpdate();
       onOpenChange(false);
       setShowConfirmDialog(false);
+      setShowPaymentDialog(false);
+      setShowPendingDialog(false);
+      setPendingReason("");
     } catch (error: any) {
       console.error("Erro ao atualizar status:", error);
       toast.error("Erro ao atualizar status");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePendingConfirm = async () => {
+    if (!pendingReason.trim()) {
+      toast.error("Informe o motivo da pendência");
+      return;
+    }
+    await performStatusUpdate("PENDENTE");
   };
 
   const address = order.address || {};
@@ -182,18 +248,20 @@ export const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdate }
 
             {/* Ações */}
             <div className="space-y-2">
-              {order.status === "ACEITO" && (
+              {isAvailable && (
                 <Button 
-                  onClick={() => updateOrderStatus("EM_PREPARO")} 
+                  onClick={acceptOrder} 
                   disabled={loading}
                   className="w-full"
                   variant="default"
+                  size="lg"
                 >
-                  <Package className="h-4 w-4 mr-2" />
-                  Marcar como Preparando
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Aceitar Entrega
                 </Button>
               )}
-              {order.status === "EM_PREPARO" && (
+
+              {isAssignedToMe && order.status === "ACEITO" && (
                 <Button 
                   onClick={() => updateOrderStatus("A_CAMINHO")} 
                   disabled={loading}
@@ -201,10 +269,11 @@ export const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdate }
                   variant="default"
                 >
                   <MapPin className="h-4 w-4 mr-2" />
-                  Iniciar Entrega
+                  Entrega a Caminho
                 </Button>
               )}
-              {order.status === "A_CAMINHO" && (
+
+              {isAssignedToMe && order.status === "A_CAMINHO" && (
                 <Button 
                   onClick={() => updateOrderStatus("NA_PORTA")} 
                   disabled={loading}
@@ -212,17 +281,18 @@ export const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdate }
                   variant="default"
                 >
                   <MapPin className="h-4 w-4 mr-2" />
-                  Cheguei no Local
+                  Entrega na Porta
                 </Button>
               )}
-              {order.status === "NA_PORTA" && (
+
+              {isAssignedToMe && order.status === "NA_PORTA" && (
                 <Button 
                   onClick={() => updateOrderStatus("ENTREGUE")} 
                   disabled={loading}
                   className="w-full bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Confirmar Entrega
+                  Finalizar Entrega
                 </Button>
               )}
             </div>
@@ -230,7 +300,7 @@ export const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdate }
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Confirmação */}
+      {/* Dialog de Confirmação - Pagamento Plataforma */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -252,11 +322,81 @@ export const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdate }
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => performStatusUpdate("ENTREGUE")}
+              onClick={() => performStatusUpdate("ENTREGUE", true)}
               disabled={loading}
               className="bg-green-600 hover:bg-green-700"
             >
               {loading ? "Confirmando..." : "Sim, Confirmar Entrega"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de Confirmação - Pagamento em Dinheiro */}
+      <AlertDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmação de Pagamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              O pagamento será em DINHEIRO. O cliente pagou corretamente?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogAction
+              onClick={() => performStatusUpdate("ENTREGUE", true)}
+              disabled={loading}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Finalizada (Pagamento OK)
+            </AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowPaymentDialog(false);
+                setShowPendingDialog(true);
+              }}
+              disabled={loading}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Pendente
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de Motivo de Pendência */}
+      <AlertDialog open={showPendingDialog} onOpenChange={setShowPendingDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Motivo da Pendência</AlertDialogTitle>
+            <AlertDialogDescription>
+              Descreva o motivo pelo qual a entrega ficou pendente:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-4">
+            <Label>Motivo *</Label>
+            <Textarea
+              placeholder="Ex: Cliente não tinha o valor exato, cliente ausente..."
+              value={pendingReason}
+              onChange={(e) => setPendingReason(e.target.value)}
+              className="mt-2"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowPendingDialog(false);
+              setPendingReason("");
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handlePendingConfirm}
+              disabled={loading || !pendingReason.trim()}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {loading ? "Salvando..." : "Salvar Motivo"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

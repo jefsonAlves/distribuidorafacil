@@ -266,7 +266,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                       size="sm"
                       onClick={() => updateStatus(order.id, "ACEITO")}
                     >
-                      Aceitar
+                      Aceitar Pedido
                     </Button>
                     <Button
                       size="sm"
@@ -277,17 +277,11 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                     </Button>
                   </>
                 )}
-
+                
                 {order.status === "ACEITO" && !order.assigned_driver && (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      setSelectedDriver("");
-                    }}
-                  >
-                    Atribuir Motorista
-                  </Button>
+                  <Badge variant="outline" className="text-xs">
+                    Aguardando entregador aceitar
+                  </Badge>
                 )}
               </div>
             </CardContent>
