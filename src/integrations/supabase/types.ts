@@ -850,6 +850,7 @@ export const Constants = {
         "EM_PREPARO",
         "A_CAMINHO",
         "NA_PORTA",
+        "ENTREGA_PENDENTE",
         "ENTREGUE",
         "CANCELADO",
       ],

@@ -31,8 +31,12 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
   useEffect(() => {
     fetchOrders();
     fetchDrivers();
-    setupRealtime();
   }, [tenantId, statusFilter]);
+
+  useEffect(() => {
+    const cleanup = setupRealtime();
+    return cleanup;
+  }, [tenantId]);
 
   const fetchOrders = async () => {
     try {
@@ -77,7 +81,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
 
   const setupRealtime = () => {
     const channel = supabase
-      .channel("orders_changes")
+      .channel("orders_management_realtime")
       .on(
         "postgres_changes",
         {
@@ -86,8 +90,12 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
           table: "orders",
           filter: `tenant_id=eq.${tenantId}`,
         },
-        () => {
-          fetchOrders();
+        (payload: any) => {
+          // Atualizar automaticamente quando houver mudanças
+          // Debounce para evitar múltiplas atualizações rápidas
+          setTimeout(() => {
+            fetchOrders();
+          }, 100);
         }
       )
       .subscribe();
@@ -196,6 +204,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
       EM_PREPARO: "bg-purple-500",
       A_CAMINHO: "bg-indigo-500",
       NA_PORTA: "bg-orange-500",
+      ENTREGA_PENDENTE: "bg-orange-600",
       ENTREGUE: "bg-green-500",
       CANCELADO: "bg-red-500",
     };
@@ -216,6 +225,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
             <SelectItem value="EM_PREPARO">Em Preparo</SelectItem>
             <SelectItem value="A_CAMINHO">A Caminho</SelectItem>
             <SelectItem value="NA_PORTA">Na Porta</SelectItem>
+            <SelectItem value="ENTREGA_PENDENTE">Entrega Pendente</SelectItem>
             <SelectItem value="ENTREGUE">Entregue</SelectItem>
             <SelectItem value="CANCELADO">Cancelado</SelectItem>
           </SelectContent>

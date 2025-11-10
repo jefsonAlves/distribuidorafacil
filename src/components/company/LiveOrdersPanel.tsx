@@ -49,7 +49,7 @@ export const LiveOrdersPanel = ({ tenantId }: LiveOrdersPanelProps) => {
 
       const pending = orders?.filter((o) => o.status === "PENDENTE").length || 0;
       const preparing = orders?.filter((o) => o.status === "EM_PREPARO").length || 0;
-      const onWay = orders?.filter((o) => o.status === "A_CAMINHO" || o.status === "NA_PORTA").length || 0;
+      const onWay = orders?.filter((o) => o.status === "A_CAMINHO" || o.status === "NA_PORTA" || o.status === "ENTREGA_PENDENTE").length || 0;
       const deliveredToday = orders?.filter((o) => o.status === "ENTREGUE").length || 0;
       const total = orders?.length || 0;
       const conversionRate = total > 0 ? (deliveredToday / total) * 100 : 0;
@@ -88,7 +88,7 @@ export const LiveOrdersPanel = ({ tenantId }: LiveOrdersPanelProps) => {
           drivers(name)
         `)
         .eq("tenant_id", tenantId)
-        .in("status", ["PENDENTE", "ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA"])
+        .in("status", ["PENDENTE", "ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "ENTREGA_PENDENTE"])
         .order("created_at", { ascending: false })
         .limit(10);
 
@@ -146,6 +146,7 @@ export const LiveOrdersPanel = ({ tenantId }: LiveOrdersPanelProps) => {
       EM_PREPARO: "bg-purple-500",
       A_CAMINHO: "bg-indigo-500",
       NA_PORTA: "bg-orange-500",
+      ENTREGA_PENDENTE: "bg-orange-600",
     };
     return colors[status] || "bg-gray-500";
   };

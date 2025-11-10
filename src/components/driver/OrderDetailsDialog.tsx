@@ -31,6 +31,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showPendingDialog, setShowPendingDialog] = useState(false);
+  const [showFinishDeliveryDialog, setShowFinishDeliveryDialog] = useState(false);
   const [pendingReason, setPendingReason] = useState("");
 
   if (!order) return null;
@@ -77,17 +78,28 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
   };
 
   const updateOrderStatus = async (newStatus: string) => {
-    // Se for mudar para ENTREGUE, verificar forma de pagamento
+    // Se for mudar para ENTREGUE, mostrar diálogo de finalização
     if (newStatus === "ENTREGUE") {
-      if (order.payment_method === "DINHEIRO") {
-        setShowPaymentDialog(true);
-      } else {
-        setShowConfirmDialog(true);
-      }
+      setShowFinishDeliveryDialog(true);
       return;
     }
 
     await performStatusUpdate(newStatus);
+  };
+
+  const handleFinishDelivery = (success: boolean) => {
+    if (success) {
+      // Finalizar com sucesso
+      if (order.payment_method === "CASH") {
+        setShowPaymentDialog(true);
+      } else {
+        setShowConfirmDialog(true);
+      }
+    } else {
+      // Finalizar pendente - mostrar diálogo de motivo
+      setShowPendingDialog(true);
+    }
+    setShowFinishDeliveryDialog(false);
   };
 
   const performStatusUpdate = async (newStatus: string, paymentReceived?: boolean) => {
@@ -104,7 +116,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       } else if (newStatus === "ENTREGUE") {
         updates.delivered_at = new Date().toISOString();
         updates.payment_status = "PAID";
-      } else if (newStatus === "PENDENTE") {
+      } else if (newStatus === "ENTREGA_PENDENTE") {
         updates.cancel_reason = pendingReason;
       }
 
@@ -120,7 +132,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         A_CAMINHO: "Entrega iniciada! Boa viagem!",
         NA_PORTA: "Chegada registrada no local",
         ENTREGUE: "🎉 Entrega concluída! Valor creditado na carteira da empresa.",
-        PENDENTE: "Entrega marcada como pendente"
+        ENTREGA_PENDENTE: "Entrega marcada como pendente"
       };
 
       toast.success(statusMessages[newStatus] || "Status atualizado!");
@@ -129,6 +141,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       setShowConfirmDialog(false);
       setShowPaymentDialog(false);
       setShowPendingDialog(false);
+      setShowFinishDeliveryDialog(false);
       setPendingReason("");
     } catch (error: any) {
       console.error("Erro ao atualizar status:", error);
@@ -143,13 +156,13 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       toast.error("Informe o motivo da pendência");
       return;
     }
-    await performStatusUpdate("PENDENTE");
+    await performStatusUpdate("ENTREGA_PENDENTE");
   };
 
   const address = order.address || {};
   const paymentMethod = {
-    DINHEIRO: "Dinheiro",
-    CARTAO: "Cartão",
+    CASH: "Dinheiro",
+    CARD: "Cartão",
     PIX: "PIX",
   }[order.payment_method] || order.payment_method;
 
@@ -332,13 +345,49 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Dialog de Finalização de Entrega */}
+      <AlertDialog open={showFinishDeliveryDialog} onOpenChange={setShowFinishDeliveryDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar Entrega</AlertDialogTitle>
+            <AlertDialogDescription>
+              Como deseja finalizar esta entrega?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-4 space-y-3">
+            <Button
+              onClick={() => handleFinishDelivery(true)}
+              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              size="lg"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Finalizar com Sucesso
+            </Button>
+            <Button
+              onClick={() => handleFinishDelivery(false)}
+              disabled={loading}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+              size="lg"
+              variant="outline"
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Finalizar Pendente
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Dialog de Confirmação - Pagamento em Dinheiro */}
       <AlertDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmação de Pagamento</AlertDialogTitle>
             <AlertDialogDescription>
-              O pagamento será em DINHEIRO. O cliente pagou corretamente?
+              O pagamento será em dinheiro. O cliente pagou corretamente?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
@@ -369,26 +418,33 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       <AlertDialog open={showPendingDialog} onOpenChange={setShowPendingDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Motivo da Pendência</AlertDialogTitle>
+            <AlertDialogTitle>Motivo da Pendência da Entrega</AlertDialogTitle>
             <AlertDialogDescription>
-              Descreva o motivo pelo qual a entrega ficou pendente:
+              Descreva o motivo pelo qual a entrega ficou pendente. Esta informação será registrada e visível para a empresa.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="my-4">
-            <Label>Motivo *</Label>
+            <Label htmlFor="pending-reason">Motivo da Pendência *</Label>
             <Textarea
-              placeholder="Ex: Cliente não tinha o valor exato, cliente ausente..."
+              id="pending-reason"
+              placeholder="Ex: Cliente não estava no endereço, cliente não tinha o valor exato, endereço incorreto, cliente solicitou reagendamento..."
               value={pendingReason}
               onChange={(e) => setPendingReason(e.target.value)}
               className="mt-2"
-              rows={3}
+              rows={4}
             />
+            <p className="text-xs text-muted-foreground mt-2">
+              Seja específico sobre o motivo da pendência para ajudar a empresa a entender a situação.
+            </p>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setShowPendingDialog(false);
-              setPendingReason("");
-            }}>
+            <AlertDialogCancel 
+              onClick={() => {
+                setShowPendingDialog(false);
+                setPendingReason("");
+              }}
+              disabled={loading}
+            >
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
@@ -396,7 +452,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
               disabled={loading || !pendingReason.trim()}
               className="bg-orange-600 hover:bg-orange-700"
             >
-              {loading ? "Salvando..." : "Salvar Motivo"}
+              {loading ? "Salvando..." : "Confirmar Pendência"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

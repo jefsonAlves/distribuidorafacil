@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,35 +17,12 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  useEffect(() => {
-    fetchOrders();
-
-    // Realtime para novos pedidos (todos os pedidos ACEITOS ou atribuídos a este driver)
-    const channel = supabase
-      .channel('driver-orders')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        () => {
-          fetchOrders();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [driverId]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
     try {
       // Buscar pedidos onde:
       // 1. Status ACEITO sem driver atribuído (disponíveis para todos)
-      // 2. OU atribuídos a este driver com status EM_PREPARO, A_CAMINHO, NA_PORTA
+      // 2. OU atribuídos a este driver com status EM_PREPARO, A_CAMINHO, NA_PORTA, ENTREGA_PENDENTE
       const { data: availableOrders, error: error1 } = await supabase
         .from("orders")
         .select(`
@@ -83,7 +60,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           )
         `)
         .eq("assigned_driver", driverId)
-        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "PENDENTE"])
+        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "ENTREGA_PENDENTE"])
         .order("created_at", { ascending: false });
 
       if (error1 || error2) throw error1 || error2;
@@ -101,7 +78,63 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [driverId]);
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const fetchOrdersWithDebounce = () => {
+      // Limpar timeout anterior se existir
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      // Agendar nova busca após 200ms
+      timeoutId = setTimeout(() => {
+        fetchOrders();
+      }, 200);
+    };
+
+    fetchOrders();
+
+    // Realtime para novos pedidos - atualizar automaticamente quando houver mudanças
+    const channel = supabase
+      .channel(`driver-orders-realtime-${driverId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        (payload: any) => {
+          // Verificar se a mudança é relevante para este driver
+          const newOrder = payload.new;
+          const oldOrder = payload.old;
+
+          if (!newOrder && !oldOrder) return;
+
+          // Atualizar se:
+          // 1. Pedido está disponível (status ACEITO sem driver atribuído)
+          // 2. Pedido foi atribuído a este driver
+          // 3. Pedido já estava atribuído a este driver (qualquer mudança de status)
+          const isAvailable = newOrder?.status === 'ACEITO' && !newOrder?.assigned_driver;
+          const isNowAssignedToMe = newOrder?.assigned_driver === driverId;
+          const wasAssignedToMe = oldOrder?.assigned_driver === driverId;
+
+          if (isAvailable || isNowAssignedToMe || wasAssignedToMe) {
+            fetchOrdersWithDebounce();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [driverId, fetchOrders]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -109,6 +142,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
       EM_PREPARO: { label: "Preparando", variant: "default" },
       A_CAMINHO: { label: "A Caminho", variant: "default" },
       NA_PORTA: { label: "Na Porta", variant: "default" },
+      ENTREGA_PENDENTE: { label: "Entrega Pendente", variant: "destructive" },
       PENDENTE: { label: "Pendente", variant: "destructive" },
     };
     const config = statusMap[status] || { label: status, variant: "outline" };
