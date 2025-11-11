@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { 
   ArrowLeft, 
@@ -54,7 +55,8 @@ const CompanyUsers = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [actionType, setActionType] = useState<"activate" | "deactivate" | null>(null);
+  const [actionType, setActionType] = useState<"activate" | "deactivate" | "reset" | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     fetchCompanyData();
@@ -138,6 +140,37 @@ const CompanyUsers = () => {
     } catch (error: any) {
       console.error("Erro ao alterar status:", error);
       toast.error("Erro ao alterar status do usuário");
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!selectedUser || !newPassword) {
+      toast.error("Senha não pode estar vazia");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("Senha deve ter no mínimo 6 caracteres");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke("reset-user-password", {
+        body: {
+          email: selectedUser.email,
+          password: newPassword,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Senha de ${selectedUser.full_name} resetada com sucesso!`);
+      setSelectedUser(null);
+      setActionType(null);
+      setNewPassword("");
+    } catch (error: any) {
+      console.error("Erro ao resetar senha:", error);
+      toast.error("Erro ao resetar senha do usuário");
     }
   };
 
@@ -302,6 +335,17 @@ const CompanyUsers = () => {
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
                             <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setActionType("reset");
+                              }}
+                            >
+                              <Key className="h-4 w-4 mr-1" />
+                              Resetar Senha
+                            </Button>
+                            <Button
                               variant={user.is_active ? "destructive" : "default"}
                               size="sm"
                               onClick={() => {
@@ -333,8 +377,11 @@ const CompanyUsers = () => {
         </div>
       </div>
 
-      {/* Dialog de confirmação */}
-      <AlertDialog open={!!actionType} onOpenChange={() => setActionType(null)}>
+      {/* Dialog de confirmação ativar/desativar */}
+      <AlertDialog 
+        open={actionType === "activate" || actionType === "deactivate"} 
+        onOpenChange={() => setActionType(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -362,6 +409,45 @@ const CompanyUsers = () => {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleToggleActive}>
               Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de reset de senha */}
+      <AlertDialog 
+        open={actionType === "reset"} 
+        onOpenChange={() => {
+          setActionType(null);
+          setNewPassword("");
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resetar Senha do Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Digite uma nova senha para o usuário{" "}
+              <strong>{selectedUser?.full_name}</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label htmlFor="newPassword">Nova Senha</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              placeholder="Digite a nova senha (mínimo 6 caracteres)"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="mt-2"
+              minLength={6}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setNewPassword("")}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetPassword}>
+              Resetar Senha
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

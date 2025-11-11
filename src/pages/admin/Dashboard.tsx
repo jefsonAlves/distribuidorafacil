@@ -9,34 +9,28 @@ import {
   TrendingUp,
   LogOut,
   PlusCircle,
-  Search,
   BarChart3,
-  Settings,
   KeyRound
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import ResetPasswordDialog from "@/components/admin/ResetPasswordDialog";
-import { TenantsList } from "@/components/admin/TenantsList";
+import { CompanySelector } from "@/components/admin/CompanySelector";
+import { useAdminStats } from "@/hooks/useAdminStats";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [showResetPassword, setShowResetPassword] = useState(false);
-  const [stats, setStats] = useState({
-    totalCompanies: 0,
-    activeCompanies: 0,
-    totalClients: 0,
-    ordersToday: 0,
-    monthlyRevenue: 0,
-  });
+  const [selectedCompany, setSelectedCompany] = useState("all");
+  const { stats, loading: statsLoading } = useAdminStats(
+    selectedCompany === "all" ? undefined : selectedCompany
+  );
 
   useEffect(() => {
     checkAuth();
-    loadStats();
   }, []);
 
   const checkAuth = async () => {
@@ -70,51 +64,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const loadStats = async () => {
-    try {
-      // Get total and active companies
-      const { data: companies } = await (supabase
-        .from("tenants") as any)
-        .select("id, status");
-
-      const totalCompanies = companies?.length || 0;
-      const activeCompanies = companies?.filter((c: any) => c.status === "ACTIVE").length || 0;
-
-      // Get total clients
-      const { count: totalClients } = await (supabase
-        .from("clients") as any)
-        .select("*", { count: "exact", head: true });
-
-      // Get orders today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const { count: ordersToday } = await (supabase
-        .from("orders") as any)
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", today.toISOString());
-
-      // Get monthly revenue
-      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const { data: orders } = await (supabase
-        .from("orders") as any)
-        .select("total")
-        .gte("created_at", firstDayOfMonth.toISOString())
-        .eq("payment_status", "PAID");
-
-      const monthlyRevenue = orders?.reduce((sum: number, order: any) => sum + Number(order.total), 0) || 0;
-
-      setStats({
-        totalCompanies,
-        activeCompanies,
-        totalClients: totalClients || 0,
-        ordersToday: ordersToday || 0,
-        monthlyRevenue,
-      });
-    } catch (error) {
-      console.error("Error loading stats:", error);
-    }
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({
@@ -124,7 +73,7 @@ const AdminDashboard = () => {
     navigate("/admin/login");
   };
 
-  if (loading) {
+  if (loading || statsLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center space-y-4">
@@ -142,16 +91,9 @@ const AdminDashboard = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-card border-b px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
+          <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold">Dashboard Central</h1>
-            <div className="relative max-w-md flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="search-company"
-                placeholder="Buscar empresa por nome ou CNPJ..."
-                className="pl-10"
-              />
-            </div>
+            <CompanySelector value={selectedCompany} onValueChange={setSelectedCompany} />
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -181,9 +123,11 @@ const AdminDashboard = () => {
             {/* Quick Actions */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold">Bem-vindo, Jeffson</h2>
+                <h2 className="text-3xl font-bold">Bem-vindo, Admin Master</h2>
                 <p className="text-muted-foreground mt-1">
-                  Visão geral de todas as empresas da plataforma
+                  {selectedCompany === "all"
+                    ? "Visão geral de todas as empresas da plataforma"
+                    : "Visão detalhada da empresa selecionada"}
                 </p>
               </div>
               <Button
@@ -207,9 +151,9 @@ const AdminDashboard = () => {
                   <Building2 className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{stats.activeCompanies}</div>
+                  <div className="text-3xl font-bold">{stats.totalCompanies}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    de {stats.totalCompanies} total
+                    {selectedCompany === "all" ? "na plataforma" : "selecionada"}
                   </p>
                 </CardContent>
               </Card>
@@ -222,9 +166,9 @@ const AdminDashboard = () => {
                   <Users className="h-4 w-4 text-accent" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{stats.totalClients}</div>
+                  <div className="text-3xl font-bold">{stats.totalUsers}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    em todas as empresas
+                    {selectedCompany === "all" ? "em todas empresas" : "na empresa"}
                   </p>
                 </CardContent>
               </Card>
@@ -237,9 +181,9 @@ const AdminDashboard = () => {
                   <ShoppingBag className="h-4 w-4 text-secondary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{stats.ordersToday}</div>
+                  <div className="text-3xl font-bold">{stats.totalOrders}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    em processamento
+                    {selectedCompany === "all" ? "consolidados" : "da empresa"}
                   </p>
                 </CardContent>
               </Card>
@@ -256,10 +200,10 @@ const AdminDashboard = () => {
                     {new Intl.NumberFormat('pt-BR', {
                       style: 'currency',
                       currency: 'BRL',
-                    }).format(stats.monthlyRevenue)}
+                    }).format(stats.totalRevenue)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    consolidado
+                    {selectedCompany === "all" ? "consolidado" : "da empresa"}
                   </p>
                 </CardContent>
               </Card>

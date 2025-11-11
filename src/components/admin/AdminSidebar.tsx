@@ -1,9 +1,22 @@
-import { Building2, BarChart3, Settings as SettingsIcon } from "lucide-react";
+import { 
+  Building2, 
+  BarChart3, 
+  Settings as SettingsIcon,
+  FileText,
+  Bug,
+  Home
+} from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const AdminSidebar = () => {
   const navigation = [
+    {
+      name: "Dashboard",
+      href: "/admin/dashboard",
+      icon: Home,
+      id: "nav-admin-dashboard",
+    },
     {
       name: "Empresas",
       href: "/admin/companies",
@@ -11,16 +24,22 @@ const AdminSidebar = () => {
       id: "nav-admin-companies",
     },
     {
+      name: "Auditoria",
+      href: "/admin/audit",
+      icon: FileText,
+      id: "nav-admin-audit",
+    },
+    {
+      name: "Bugs",
+      href: "/admin/bugs",
+      icon: Bug,
+      id: "nav-admin-bugs",
+    },
+    {
       name: "Relatórios",
       href: "/admin/reports",
       icon: BarChart3,
       id: "nav-admin-reports",
-    },
-    {
-      name: "Configurações",
-      href: "/admin/settings",
-      icon: SettingsIcon,
-      id: "nav-admin-settings",
     },
   ];
 

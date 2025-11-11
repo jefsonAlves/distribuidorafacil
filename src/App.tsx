@@ -19,6 +19,8 @@ import AdminCompanies from "./pages/admin/Companies";
 import BootstrapAdmin from "./pages/admin/BootstrapAdmin";
 import CompanyUsers from "./pages/admin/CompanyUsers";
 import CompanyAnalytics from "./pages/admin/CompanyAnalytics";
+import Audit from "./pages/admin/Audit";
+import Bugs from "./pages/admin/Bugs";
 
 // Dashboards por tipo de usuário
 import ClientDashboard from "./pages/client/Dashboard";
@@ -84,6 +86,26 @@ const App = () => (
               <RequireAuth>
                 <RequireRole role="admin_master">
                   <CompanyAnalytics />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <RequireAuth>
+                <RequireRole role="admin_master">
+                  <Audit />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/bugs"
+            element={
+              <RequireAuth>
+                <RequireRole role="admin_master">
+                  <Bugs />
                 </RequireRole>
               </RequireAuth>
             }
