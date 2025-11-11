@@ -17,6 +17,8 @@ import AdminEmergencyReset from "./pages/admin/EmergencyReset";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminCompanies from "./pages/admin/Companies";
 import BootstrapAdmin from "./pages/admin/BootstrapAdmin";
+import CompanyUsers from "./pages/admin/CompanyUsers";
+import CompanyAnalytics from "./pages/admin/CompanyAnalytics";
 
 // Dashboards por tipo de usuário
 import ClientDashboard from "./pages/client/Dashboard";
@@ -62,6 +64,26 @@ const App = () => (
               <RequireAuth>
                 <RequireRole role="admin_master">
                   <AdminCompanies />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/company/:companyId/users"
+            element={
+              <RequireAuth>
+                <RequireRole role="admin_master">
+                  <CompanyUsers />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/company/:companyId/analytics"
+            element={
+              <RequireAuth>
+                <RequireRole role="admin_master">
+                  <CompanyAnalytics />
                 </RequireRole>
               </RequireAuth>
             }

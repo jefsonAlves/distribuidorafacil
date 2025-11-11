@@ -60,7 +60,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           )
         `)
         .eq("assigned_driver", driverId)
-        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "ENTREGA_PENDENTE"])
+        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA"])
         .order("created_at", { ascending: false });
 
       if (error1 || error2) throw error1 || error2;
@@ -142,7 +142,6 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
       EM_PREPARO: { label: "Preparando", variant: "default" },
       A_CAMINHO: { label: "A Caminho", variant: "default" },
       NA_PORTA: { label: "Na Porta", variant: "default" },
-      ENTREGA_PENDENTE: { label: "Entrega Pendente", variant: "destructive" },
       PENDENTE: { label: "Pendente", variant: "destructive" },
     };
     const config = statusMap[status] || { label: status, variant: "outline" };

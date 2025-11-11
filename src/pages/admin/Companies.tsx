@@ -9,7 +9,9 @@ import {
   Link as LinkIcon,
   Power,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Users,
+  BarChart3
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -228,6 +230,24 @@ const AdminCompanies = () => {
                         <TableCell className="capitalize">{company.plan}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/admin/company/${company.id}/users`)}
+                              title="Ver usuários"
+                            >
+                              <Users className="h-4 w-4 mr-1" />
+                              Usuários
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/admin/company/${company.id}/analytics`)}
+                              title="Ver analytics"
+                            >
+                              <BarChart3 className="h-4 w-4 mr-1" />
+                              Analytics
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
