@@ -11,7 +11,8 @@ import {
   Copy,
   ExternalLink,
   Users,
-  BarChart3
+  BarChart3,
+  Settings
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import CreateCompanyDialog from "@/components/admin/CreateCompanyDialog";
+import { TenantFeaturesDialog } from "@/components/admin/TenantFeaturesDialog";
 
 interface Tenant {
   id: string;
@@ -45,6 +47,8 @@ const AdminCompanies = () => {
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<Tenant[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showFeaturesDialog, setShowFeaturesDialog] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<Tenant | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -233,6 +237,18 @@ const AdminCompanies = () => {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => {
+                                setSelectedCompany(company);
+                                setShowFeaturesDialog(true);
+                              }}
+                              title="Configurar features"
+                            >
+                              <Settings className="h-4 w-4 mr-1" />
+                              Features
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => navigate(`/admin/company/${company.id}/users`)}
                               title="Ver usuários"
                             >
@@ -291,6 +307,15 @@ const AdminCompanies = () => {
         onOpenChange={setShowCreateDialog}
         onSuccess={loadCompanies}
       />
+      
+      {selectedCompany && (
+        <TenantFeaturesDialog
+          open={showFeaturesDialog}
+          onOpenChange={setShowFeaturesDialog}
+          tenantId={selectedCompany.id}
+          tenantName={selectedCompany.name}
+        />
+      )}
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantFeatures } from "@/hooks/useTenantFeatures";
 
 interface CreateDriverDialogProps {
   open: boolean;
@@ -16,6 +17,7 @@ interface CreateDriverDialogProps {
 
 export const CreateDriverDialog = ({ open, onOpenChange, tenantId, onSuccess }: CreateDriverDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const { canCreateDriver } = useTenantFeatures(tenantId);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -28,6 +30,14 @@ export const CreateDriverDialog = ({ open, onOpenChange, tenantId, onSuccess }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validar limite de motoristas
+    const canCreate = await canCreateDriver();
+    if (!canCreate) {
+      toast.error("Limite de motoristas atingido. Entre em contato com o suporte para aumentar seu plano.");
+      return;
+    }
+    
     setLoading(true);
 
     try {

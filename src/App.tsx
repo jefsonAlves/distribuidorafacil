@@ -21,6 +21,7 @@ import CompanyUsers from "./pages/admin/CompanyUsers";
 import CompanyAnalytics from "./pages/admin/CompanyAnalytics";
 import Audit from "./pages/admin/Audit";
 import Bugs from "./pages/admin/Bugs";
+import Reports from "./pages/admin/Reports";
 
 // Dashboards por tipo de usuário
 import ClientDashboard from "./pages/client/Dashboard";
@@ -106,6 +107,16 @@ const App = () => (
               <RequireAuth>
                 <RequireRole role="admin_master">
                   <Bugs />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/reports"
+            element={
+              <RequireAuth>
+                <RequireRole role="admin_master">
+                  <Reports />
                 </RequireRole>
               </RequireAuth>
             }

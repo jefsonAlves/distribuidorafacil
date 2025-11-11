@@ -539,6 +539,83 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_features: {
+        Row: {
+          can_access_advanced_analytics: boolean | null
+          can_customize_design: boolean | null
+          can_export_reports: boolean | null
+          can_use_custom_domain: boolean | null
+          can_use_loyalty_program: boolean | null
+          can_use_multi_location: boolean | null
+          can_use_whatsapp_integration: boolean | null
+          charges_for_design: boolean | null
+          charges_for_extra_clients: boolean | null
+          charges_for_extra_drivers: boolean | null
+          created_at: string | null
+          id: string
+          max_clients: number | null
+          max_drivers: number | null
+          max_orders_per_day: number | null
+          max_products: number | null
+          price_per_extra_client: number | null
+          price_per_extra_driver: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          can_access_advanced_analytics?: boolean | null
+          can_customize_design?: boolean | null
+          can_export_reports?: boolean | null
+          can_use_custom_domain?: boolean | null
+          can_use_loyalty_program?: boolean | null
+          can_use_multi_location?: boolean | null
+          can_use_whatsapp_integration?: boolean | null
+          charges_for_design?: boolean | null
+          charges_for_extra_clients?: boolean | null
+          charges_for_extra_drivers?: boolean | null
+          created_at?: string | null
+          id?: string
+          max_clients?: number | null
+          max_drivers?: number | null
+          max_orders_per_day?: number | null
+          max_products?: number | null
+          price_per_extra_client?: number | null
+          price_per_extra_driver?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          can_access_advanced_analytics?: boolean | null
+          can_customize_design?: boolean | null
+          can_export_reports?: boolean | null
+          can_use_custom_domain?: boolean | null
+          can_use_loyalty_program?: boolean | null
+          can_use_multi_location?: boolean | null
+          can_use_whatsapp_integration?: boolean | null
+          charges_for_design?: boolean | null
+          charges_for_extra_clients?: boolean | null
+          charges_for_extra_drivers?: boolean | null
+          created_at?: string | null
+          id?: string
+          max_clients?: number | null
+          max_drivers?: number | null
+          max_orders_per_day?: number | null
+          max_products?: number | null
+          price_per_extra_client?: number | null
+          price_per_extra_driver?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_features_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           banner_urls: string[] | null

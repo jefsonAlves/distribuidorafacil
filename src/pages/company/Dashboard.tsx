@@ -16,6 +16,7 @@ import { ClientsList } from "@/components/company/ClientsList";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { WalletDashboard } from "@/components/company/WalletDashboard";
 import { CompanySettingsDialog } from "@/components/company/CompanySettingsDialog";
+import { FeatureLimitsCard } from "@/components/company/FeatureLimitsCard";
 
 const CompanyDashboard = () => {
   const navigate = useNavigate();
@@ -142,7 +143,14 @@ const CompanyDashboard = () => {
             </TabsList>
 
             <TabsContent value="visao-geral">
-              {tenantId && <LiveOrdersPanel tenantId={tenantId} />}
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="md:col-span-2">
+                  {tenantId && <LiveOrdersPanel tenantId={tenantId} />}
+                </div>
+                <div>
+                  {tenantId && <FeatureLimitsCard tenantId={tenantId} />}
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="pedidos">
