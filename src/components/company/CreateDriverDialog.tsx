@@ -31,16 +31,31 @@ export const CreateDriverDialog = ({ open, onOpenChange, tenantId, onSuccess }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar limite de motoristas
-    const canCreate = await canCreateDriver();
-    if (!canCreate) {
-      toast.error("Limite de motoristas atingido. Entre em contato com o suporte para aumentar seu plano.");
-      return;
-    }
-    
     setLoading(true);
 
     try {
+      // Validar limite de motoristas no servidor
+      const { data: validationData, error: validationError } = await supabase.functions.invoke(
+        "validate-tenant-limits",
+        {
+          body: {
+            tenantId,
+            resourceType: "drivers",
+          },
+        }
+      );
+
+      if (validationError) {
+        console.error("Erro na validação:", validationError);
+        toast.error("Erro ao validar limite de motoristas");
+        return;
+      }
+
+      if (!validationData.allowed) {
+        toast.error(`Limite de motoristas atingido (${validationData.limit}). Solicite upgrade para adicionar mais.`);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Você precisa estar logado");

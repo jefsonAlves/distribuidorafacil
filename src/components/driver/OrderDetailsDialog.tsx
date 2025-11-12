@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +18,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MapPin, Phone, User, Package, DollarSign, CreditCard, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { isValidTransition, getStatusLabel } from "@/lib/orderStateMachine";
 
 interface OrderDetailsDialogProps {
   order: any;
@@ -78,6 +80,12 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
   };
 
   const updateOrderStatus = async (newStatus: string) => {
+    // Validar transição de estado
+    if (!isValidTransition(order.status, newStatus)) {
+      toast.error(`Não é possível mudar de ${getStatusLabel(order.status)} para ${getStatusLabel(newStatus)}`);
+      return;
+    }
+
     // Se for mudar para ENTREGUE, mostrar diálogo de finalização
     if (newStatus === "ENTREGUE") {
       setShowFinishDeliveryDialog(true);

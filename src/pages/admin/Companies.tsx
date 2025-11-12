@@ -28,6 +28,7 @@ import {
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import CreateCompanyDialog from "@/components/admin/CreateCompanyDialog";
 import { TenantFeaturesDialog } from "@/components/admin/TenantFeaturesDialog";
+import { CompanyEditDialog } from "@/components/admin/CompanyEditDialog";
 
 interface Tenant {
   id: string;
@@ -48,6 +49,7 @@ const AdminCompanies = () => {
   const [companies, setCompanies] = useState<Tenant[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showFeaturesDialog, setShowFeaturesDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Tenant | null>(null);
 
   useEffect(() => {
@@ -285,6 +287,10 @@ const AdminCompanies = () => {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => {
+                                setSelectedCompany(company);
+                                setShowEditDialog(true);
+                              }}
                               id={`btn-edit-company-${company.id}`}
                               title="Editar empresa"
                             >
@@ -309,12 +315,20 @@ const AdminCompanies = () => {
       />
       
       {selectedCompany && (
-        <TenantFeaturesDialog
-          open={showFeaturesDialog}
-          onOpenChange={setShowFeaturesDialog}
-          tenantId={selectedCompany.id}
-          tenantName={selectedCompany.name}
-        />
+        <>
+          <TenantFeaturesDialog
+            open={showFeaturesDialog}
+            onOpenChange={setShowFeaturesDialog}
+            tenantId={selectedCompany.id}
+            tenantName={selectedCompany.name}
+          />
+          <CompanyEditDialog
+            open={showEditDialog}
+            onOpenChange={setShowEditDialog}
+            tenant={selectedCompany}
+            onSuccess={loadCompanies}
+          />
+        </>
       )}
     </div>
   );

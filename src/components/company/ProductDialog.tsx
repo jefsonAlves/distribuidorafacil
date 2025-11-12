@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface ProductDialogProps {
   open: boolean;
@@ -60,6 +61,30 @@ export const ProductDialog = ({ open, onOpenChange, product, tenantId, onSuccess
     setLoading(true);
 
     try {
+      // Se for criar novo produto, validar limite
+      if (!product) {
+        const { data: validationData, error: validationError } = await supabase.functions.invoke(
+          "validate-tenant-limits",
+          {
+            body: {
+              tenantId,
+              resourceType: "products",
+            },
+          }
+        );
+
+        if (validationError) {
+          console.error("Erro na validação:", validationError);
+          toast.error("Erro ao validar limite de produtos");
+          return;
+        }
+
+        if (!validationData.allowed) {
+          toast.error(`Limite de produtos atingido (${validationData.limit}). Solicite upgrade para adicionar mais.`);
+          return;
+        }
+      }
+
       const productData = {
         name: formData.name,
         description: formData.description,
