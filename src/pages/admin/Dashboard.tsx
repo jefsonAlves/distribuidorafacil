@@ -30,39 +30,8 @@ const AdminDashboard = () => {
   );
 
   useEffect(() => {
-    checkAuth();
+    setLoading(false);
   }, []);
-
-  const checkAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/admin/login");
-        return;
-      }
-
-      // Verificar role usando user_roles
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
-
-      if (rolesError || !roles) {
-        navigate("/admin/login");
-        return;
-      }
-
-      const hasAdminMaster = roles.some((r: any) => r.role === "admin_master");
-      if (!hasAdminMaster) {
-        navigate("/admin/login");
-      }
-    } catch (error) {
-      console.error("Auth check error:", error);
-      navigate("/admin/login");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -70,7 +39,7 @@ const AdminDashboard = () => {
       title: "Logout realizado",
       description: "Até logo!",
     });
-    navigate("/admin/login");
+    navigate("/auth/login");
   };
 
   if (loading || statsLoading) {

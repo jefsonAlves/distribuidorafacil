@@ -53,27 +53,8 @@ const AdminCompanies = () => {
   const [selectedCompany, setSelectedCompany] = useState<Tenant | null>(null);
 
   useEffect(() => {
-    checkAuth();
     loadCompanies();
   }, []);
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/admin/login");
-      return;
-    }
-
-    const { data: profile } = await (supabase
-      .from("profiles") as any)
-      .select("role")
-      .eq("id", session.user.id)
-      .single();
-
-    if (profile?.role !== "admin_master") {
-      navigate("/admin/login");
-    }
-  };
 
   const loadCompanies = async () => {
     try {
