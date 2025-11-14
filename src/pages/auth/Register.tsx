@@ -70,6 +70,32 @@ const Register = () => {
     setLoading(true);
 
     try {
+      // Se for empresa, usar edge function
+      if (userType === "company") {
+        const { data, error } = await supabase.functions.invoke('create-company', {
+          body: {
+            email,
+            password,
+            fullName,
+            companyName,
+            cnpj,
+            phone,
+          }
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error);
+
+        toast.success("🎉 Empresa cadastrada com sucesso!");
+        toast.info("Suas funcionalidades serão liberadas pelo administrador.");
+        
+        setTimeout(() => {
+          navigate("/auth/login");
+        }, 3000);
+        return;
+      }
+
+      // Para cliente e driver, usar fluxo normal
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -79,9 +105,7 @@ const Register = () => {
             full_name: fullName,
             user_type: userType,
             phone,
-            cpf: userType !== "company" ? cpf : undefined,
-            cnpj: userType === "company" ? cnpj : undefined,
-            company_name: userType === "company" ? companyName : undefined,
+            cpf: userType === "client" ? cpf : undefined,
             vehicle: userType === "driver" ? vehicle : undefined,
           },
         },

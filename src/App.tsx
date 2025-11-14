@@ -12,7 +12,6 @@ import AuthLogin from "./pages/auth/Login";
 import AuthRegister from "./pages/auth/Register";
 
 // Admin Master
-import AdminLogin from "./pages/admin/Login";
 import AdminEmergencyReset from "./pages/admin/EmergencyReset";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminCompanies from "./pages/admin/Companies";
@@ -48,7 +47,6 @@ const App = () => (
           <Route path="/auth/register" element={<AuthRegister />} />
           
           {/* Admin Master */}
-          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/emergency-reset" element={<AdminEmergencyReset />} />
           <Route path="/admin/bootstrap" element={<BootstrapAdmin />} />
           <Route
