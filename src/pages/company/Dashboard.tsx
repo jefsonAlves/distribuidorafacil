@@ -17,6 +17,7 @@ import { NotificationBell } from "@/components/ui/NotificationBell";
 import { WalletDashboard } from "@/components/company/WalletDashboard";
 import { CompanySettingsDialog } from "@/components/company/CompanySettingsDialog";
 import { FeatureLimitsCard } from "@/components/company/FeatureLimitsCard";
+import { ClientRegistrationLink } from "@/components/company/ClientRegistrationLink";
 
 const CompanyDashboard = () => {
   const navigate = useNavigate();
@@ -144,7 +145,8 @@ const CompanyDashboard = () => {
 
             <TabsContent value="visao-geral">
               <div className="grid gap-6 md:grid-cols-3">
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 space-y-6">
+                  {tenantId && <ClientRegistrationLink tenantId={tenantId} />}
                   {tenantId && <LiveOrdersPanel tenantId={tenantId} />}
                 </div>
                 <div>
