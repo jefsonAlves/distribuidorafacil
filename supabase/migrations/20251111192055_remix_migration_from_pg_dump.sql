@@ -348,21 +348,34 @@ BEGIN
   -- Verificar mudança de status
   IF NEW.status != OLD.status THEN
     CASE NEW.status
+      WHEN 'SOLICITADO' THEN
+        -- Notificação inicial ao cliente quando o pedido é feito (já deve ser coberto por notify_order_created se for para o admin da empresa)
+        status_title := 'Pedido Realizado';
+        status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' foi realizado com sucesso e aguarda confirmação!';
       WHEN 'ACEITO' THEN
         status_title := 'Pedido Aceito';
-        status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' foi aceito e está sendo preparado.';
-      WHEN 'EM_PREPARO' THEN
-        status_title := 'Pedido em Preparo';
+        status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' foi aceito pela empresa e está sendo preparado.';
+      WHEN 'PREPARANDO' THEN
+        status_title := 'Pedido em Preparação';
         status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' está sendo preparado.';
+      WHEN 'PRONTO' THEN
+        status_title := 'Pedido Pronto';
+        status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' está pronto para ser coletado pelo entregador!';
+      WHEN 'COLETADO' THEN
+        status_title := 'Pedido Coletado';
+        status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' foi coletado pelo entregador e já está a caminho!';
       WHEN 'A_CAMINHO' THEN
         status_title := 'Pedido a Caminho';
         status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' está a caminho!';
-      WHEN 'NA_PORTA' THEN
+      WHEN 'CHEGOU' THEN
         status_title := 'Entregador Chegou';
         status_message := 'O entregador chegou com seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || '!';
       WHEN 'ENTREGUE' THEN
         status_title := 'Pedido Entregue';
         status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' foi entregue com sucesso!';
+      WHEN 'PENDENTE' THEN
+        status_title := 'Problema na Entrega';
+        status_message := 'Houve um problema com a entrega do seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || '. Entraremos em contato.';
       WHEN 'CANCELADO' THEN
         status_title := 'Pedido Cancelado';
         status_message := 'Seu pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' foi cancelado.';
@@ -380,6 +393,96 @@ BEGIN
         NEW.id
       );
     END IF;
+
+    -- Notificar a empresa sobre status críticos (Pendente, Cancelado) ou quando o pedido está pronto
+    IF NEW.status IN ('PENDENTE', 'CANCELADO', 'PRONTO') THEN
+      DECLARE
+        company_admin_id UUID;
+        company_message TEXT;
+        company_title TEXT;
+      BEGIN
+        SELECT p.id INTO company_admin_id
+        FROM public.profiles p
+        INNER JOIN public.user_roles ur ON ur.user_id = p.id
+        WHERE p.tenant_id = NEW.tenant_id 
+          AND ur.role = 'company_admin'
+        LIMIT 1;
+
+        IF company_admin_id IS NOT NULL THEN
+          CASE NEW.status
+            WHEN 'PENDENTE' THEN
+              company_title := 'Problema na Entrega';
+              company_message := 
+                'O pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || 
+                ' foi marcado como PENDENTE.' ||
+                COALESCE(' Categoria: ' || NEW.problem_category, '') ||
+                COALESCE(' Motivo: ' || NEW.problem_description, '') || '.';
+            WHEN 'CANCELADO' THEN
+              company_title := 'Pedido Cancelado';
+              company_message := 'O pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' foi cancelado. Motivo: ' || COALESCE(NEW.cancel_reason, 'Não informado') || '.';
+            WHEN 'PRONTO' THEN
+              company_title := 'Pedido Pronto para Coleta';
+              company_message := 'O pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' está PRONTO para ser coletado por um entregador.';
+            ELSE
+              -- Não notificar a empresa para outros status aqui, pois já há notificações específicas para outros eventos.
+              NULL;
+          END CASE;
+
+          IF company_title IS NOT NULL AND company_message IS NOT NULL THEN
+            PERFORM public.create_notification(
+              company_admin_id,
+              NEW.tenant_id,
+              company_title,
+              company_message,
+              'order',
+              NEW.id
+            );
+          END IF;
+        END IF;
+      END;
+    END IF;
+    
+    -- Notificar o entregador quando o status muda para PRONTO ou PENDENTE
+    IF NEW.assigned_driver IS NOT NULL AND NEW.status IN ('PRONTO', 'PENDENTE') THEN
+      DECLARE
+        driver_user_id UUID;
+        driver_message TEXT;
+        driver_title TEXT;
+      BEGIN
+        SELECT user_id INTO driver_user_id
+        FROM public.drivers
+        WHERE id = NEW.assigned_driver;
+
+        IF driver_user_id IS NOT NULL THEN
+          CASE NEW.status
+            WHEN 'PRONTO' THEN
+              driver_title := 'Pedido Pronto para Coleta';
+              driver_message := 'O pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || ' está PRONTO para ser coletado!';
+            WHEN 'PENDENTE' THEN
+              driver_title := 'Problema no Pedido Atribuído';
+              driver_message := 
+                'O pedido #' || SUBSTRING(NEW.id::TEXT, 1, 8) || 
+                ' foi marcado como PENDENTE.' ||
+                COALESCE(' Categoria: ' || NEW.problem_category, '') ||
+                COALESCE(' Motivo: ' || NEW.problem_description, '') || '.';
+            ELSE
+              NULL;
+          END CASE;
+
+          IF driver_title IS NOT NULL AND driver_message IS NOT NULL THEN
+            PERFORM public.create_notification(
+              driver_user_id,
+              NEW.tenant_id,
+              driver_title,
+              driver_message,
+              'order',
+              NEW.id
+            );
+          END IF;
+        END IF;
+      END;
+    END IF;
+
   END IF;
 
   RETURN NEW;

@@ -19,6 +19,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MapPin, Phone, User, Package, DollarSign, CreditCard, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import { isValidTransition, getStatusLabel } from "@/lib/orderStateMachine";
+import { RouteMap } from "./RouteMap"; // Importar o componente RouteMap
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar componentes Select
 
 interface OrderDetailsDialogProps {
   order: any;
@@ -26,19 +28,30 @@ interface OrderDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onStatusUpdate: () => void;
+  driverLocation: { lat: number; lng: number } | null; // Adicionar prop para localização do motorista
 }
 
-export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStatusUpdate }: OrderDetailsDialogProps) => {
+const PROBLEM_CATEGORIES = [
+  "CLIENTE_AUSENTE",
+  "ENDERECO_INCORRETO",
+  "PROBLEMA_PAGAMENTO",
+  "PRODUTO_DANIFICADO",
+  "VEICULO_PROBLEMA",
+  "OUTROS",
+];
+
+export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStatusUpdate, driverLocation }: OrderDetailsDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showPendingDialog, setShowPendingDialog] = useState(false);
   const [showFinishDeliveryDialog, setShowFinishDeliveryDialog] = useState(false);
   const [pendingReason, setPendingReason] = useState("");
+  const [problemCategory, setProblemCategory] = useState<string>(""); // Novo estado para a categoria do problema
 
   if (!order) return null;
 
-  const isAvailable = order.status === "ACEITO" && !order.assigned_driver;
+  const isAvailable = order.status === "ACEITO" && !order.assigned_driver; // Esta linha pode ser removida se não for mais usada
   const isAssignedToMe = order.assigned_driver === driverId;
 
   const acceptOrder = async () => {
@@ -62,7 +75,8 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         .from("orders")
         .update({ 
           assigned_driver: driverId,
-          accepted_at: new Date().toISOString()
+          status: "COLETADO", 
+          collected_at: new Date().toISOString() 
         })
         .eq("id", order.id);
 
@@ -91,6 +105,11 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       setShowFinishDeliveryDialog(true);
       return;
     }
+    // Se for mudar para PENDENTE, mostrar diálogo de motivo
+    if (newStatus === "PENDENTE") {
+      setShowPendingDialog(true);
+      return;
+    }
 
     await performStatusUpdate(newStatus);
   };
@@ -115,16 +134,22 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
     try {
       const updates: any = { status: newStatus };
 
-      if (newStatus === "EM_PREPARO") {
+      if (newStatus === "PREPARANDO") {
         updates.preparing_at = new Date().toISOString();
+      } else if (newStatus === "COLETADO") {
+        updates.collected_at = new Date().toISOString();
       } else if (newStatus === "A_CAMINHO") {
         updates.on_way_at = new Date().toISOString();
-      } else if (newStatus === "NA_PORTA") {
+      } else if (newStatus === "CHEGOU") {
         updates.at_door_at = new Date().toISOString();
       } else if (newStatus === "ENTREGUE") {
         updates.delivered_at = new Date().toISOString();
         updates.payment_status = "PAID";
-      } else if (newStatus === "ENTREGA_PENDENTE") {
+      } else if (newStatus === "PENDENTE") {
+        updates.cancel_reason = pendingReason;
+        updates.problem_category = problemCategory; // Salvar a categoria do problema
+        updates.problem_description = pendingReason; // Usar pendingReason como descrição detalhada
+      } else if (newStatus === "CANCELADO") {
         updates.cancel_reason = pendingReason;
       }
 
@@ -136,11 +161,13 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       if (error) throw error;
       
       const statusMessages: Record<string, string> = {
-        EM_PREPARO: "Pedido marcado como em preparo",
+        PREPARANDO: "Pedido marcado como em preparação",
+        COLETADO: "Pedido coletado pelo entregador",
         A_CAMINHO: "Entrega iniciada! Boa viagem!",
-        NA_PORTA: "Chegada registrada no local",
+        CHEGOU: "Chegada registrada no local",
         ENTREGUE: "🎉 Entrega concluída! Valor creditado na carteira da empresa.",
-        ENTREGA_PENDENTE: "Entrega marcada como pendente"
+        PENDENTE: "Entrega marcada como pendente",
+        CANCELADO: "Pedido cancelado"
       };
 
       toast.success(statusMessages[newStatus] || "Status atualizado!");
@@ -151,6 +178,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       setShowPendingDialog(false);
       setShowFinishDeliveryDialog(false);
       setPendingReason("");
+      setProblemCategory(""); // Limpar a categoria do problema
     } catch (error: any) {
       console.error("Erro ao atualizar status:", error);
       toast.error("Erro ao atualizar status");
@@ -160,11 +188,11 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
   };
 
   const handlePendingConfirm = async () => {
-    if (!pendingReason.trim()) {
-      toast.error("Informe o motivo da pendência");
+    if (!problemCategory || !pendingReason.trim()) { // Validar categoria e razão
+      toast.error("Selecione uma categoria e informe o motivo da pendência");
       return;
     }
-    await performStatusUpdate("ENTREGA_PENDENTE");
+    await performStatusUpdate("PENDENTE");
   };
 
   const address = order.address || {};
@@ -213,6 +241,10 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 <p>{address.city || "Cidade não informada"} - {address.state || "Estado não informado"}</p>
                 {address.zipCode && <p>CEP: {address.zipCode}</p>}
               </div>
+              {/* Integrar RouteMap aqui */}
+              {driverLocation && order.address && (
+                <RouteMap address={order.address} driverLocation={driverLocation} />
+              )}
             </div>
 
             {/* Itens */}
@@ -264,25 +296,25 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 <Clock className="h-4 w-4" />
                 Status Atual
               </h3>
-              <Badge className="text-sm">{order.status}</Badge>
+              <Badge className="text-sm">{getStatusLabel(order.status)}</Badge>
             </div>
 
             {/* Ações */}
             <div className="space-y-2">
-              {isAvailable && (
+              {isAssignedToMe && order.status === "PRONTO" && (
                 <Button 
-                  onClick={acceptOrder} 
+                  onClick={() => updateOrderStatus("COLETADO")} 
                   disabled={loading}
                   className="w-full"
                   variant="default"
                   size="lg"
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Aceitar Entrega
+                  <Package className="h-4 w-4 mr-2" />
+                  Coletar Pedido
                 </Button>
               )}
 
-              {isAssignedToMe && order.status === "ACEITO" && (
+              {isAssignedToMe && order.status === "COLETADO" && (
                 <Button 
                   onClick={() => updateOrderStatus("A_CAMINHO")} 
                   disabled={loading}
@@ -296,17 +328,17 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
 
               {isAssignedToMe && order.status === "A_CAMINHO" && (
                 <Button 
-                  onClick={() => updateOrderStatus("NA_PORTA")} 
+                  onClick={() => updateOrderStatus("CHEGOU")} 
                   disabled={loading}
                   className="w-full"
                   variant="default"
                 >
                   <MapPin className="h-4 w-4 mr-2" />
-                  Entrega na Porta
+                  Cheguei no Local
                 </Button>
               )}
 
-              {isAssignedToMe && order.status === "NA_PORTA" && (
+              {isAssignedToMe && order.status === "CHEGOU" && (
                 <Button 
                   onClick={() => updateOrderStatus("ENTREGUE")} 
                   disabled={loading}
@@ -314,6 +346,18 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Finalizar Entrega
+                </Button>
+              )}
+
+              {isAssignedToMe && (order.status === "A_CAMINHO" || order.status === "CHEGOU") && (
+                <Button 
+                  onClick={() => updateOrderStatus("PENDENTE")}
+                  disabled={loading}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Reportar Problema
                 </Button>
               )}
             </div>
@@ -426,30 +470,48 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       <AlertDialog open={showPendingDialog} onOpenChange={setShowPendingDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Motivo da Pendência da Entrega</AlertDialogTitle>
+            <AlertDialogTitle>Reportar Problema na Entrega</AlertDialogTitle>
             <AlertDialogDescription>
-              Descreva o motivo pelo qual a entrega ficou pendente. Esta informação será registrada e visível para a empresa.
+              Selecione a categoria do problema e forneça uma descrição detalhada. Esta informação será registrada e visível para a empresa.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="my-4">
-            <Label htmlFor="pending-reason">Motivo da Pendência *</Label>
-            <Textarea
-              id="pending-reason"
-              placeholder="Ex: Cliente não estava no endereço, cliente não tinha o valor exato, endereço incorreto, cliente solicitou reagendamento..."
-              value={pendingReason}
-              onChange={(e) => setPendingReason(e.target.value)}
-              className="mt-2"
-              rows={4}
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              Seja específico sobre o motivo da pendência para ajudar a empresa a entender a situação.
-            </p>
+          <div className="my-4 space-y-4">
+            <div>
+              <Label htmlFor="problem-category">Categoria do Problema *</Label>
+              <Select value={problemCategory} onValueChange={setProblemCategory}>
+                <SelectTrigger className="w-full mt-2">
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROBLEM_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category.replace(/_/g, " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="pending-reason">Descrição Detalhada do Problema *</Label>
+              <Textarea
+                id="pending-reason"
+                placeholder="Ex: Cliente não estava no endereço, cliente não tinha o valor exato, endereço incorreto, cliente solicitou reagendamento..."
+                value={pendingReason}
+                onChange={(e) => setPendingReason(e.target.value)}
+                className="mt-2"
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Seja específico sobre o motivo da pendência para ajudar a empresa a entender a situação.
+              </p>
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel 
               onClick={() => {
                 setShowPendingDialog(false);
                 setPendingReason("");
+                setProblemCategory("");
               }}
               disabled={loading}
             >
@@ -457,10 +519,10 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handlePendingConfirm}
-              disabled={loading || !pendingReason.trim()}
+              disabled={loading || !problemCategory || !pendingReason.trim()}
               className="bg-orange-600 hover:bg-orange-700"
             >
-              {loading ? "Salvando..." : "Confirmar Pendência"}
+              {loading ? "Reportando..." : "Confirmar Problema"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

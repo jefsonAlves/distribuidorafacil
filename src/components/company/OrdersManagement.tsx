@@ -114,7 +114,8 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
         .from("orders")
         .update({ 
           assigned_driver: selectedDriver,
-          status: "ACEITO" 
+          status: "ACEITO",
+          accepted_at: new Date().toISOString() // Adiciona o timestamp de aceitação
         })
         .eq("id", selectedOrder.id);
 
@@ -137,12 +138,20 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
       const updateData: any = { status: newStatus };
       
       if (newStatus === "ACEITO") updateData.accepted_at = new Date().toISOString();
-      if (newStatus === "EM_PREPARO") updateData.preparing_at = new Date().toISOString();
+      if (newStatus === "PREPARANDO") updateData.preparing_at = new Date().toISOString();
+      if (newStatus === "PRONTO") updateData.ready_at = new Date().toISOString();
+      if (newStatus === "COLETADO") updateData.collected_at = new Date().toISOString();
       if (newStatus === "A_CAMINHO") updateData.on_way_at = new Date().toISOString();
-      if (newStatus === "NA_PORTA") updateData.at_door_at = new Date().toISOString();
+      if (newStatus === "CHEGOU") updateData.at_door_at = new Date().toISOString();
       if (newStatus === "ENTREGUE") {
         updateData.delivered_at = new Date().toISOString();
         updateData.payment_status = "PAID";
+      } else if (newStatus === "PENDENTE") {
+        // Pendente é tratado no dialog do entregador, mas a empresa pode ter que mudar para esse status se reportar problema
+        updateData.is_pending = true;
+      } else if (newStatus === "CANCELADO") {
+        // Cancelamento é tratado em handleCancelClick
+        updateData.is_cancelled = true;
       }
 
       const { error } = await supabase
@@ -199,13 +208,15 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
 
   const getStatusColor = (status: string) => {
     const colors: any = {
-      PENDENTE: "bg-yellow-500",
+      SOLICITADO: "bg-gray-400",
       ACEITO: "bg-blue-500",
-      EM_PREPARO: "bg-purple-500",
-      A_CAMINHO: "bg-indigo-500",
-      NA_PORTA: "bg-orange-500",
-      ENTREGA_PENDENTE: "bg-orange-600",
+      PREPARANDO: "bg-purple-500",
+      PRONTO: "bg-indigo-500",
+      COLETADO: "bg-yellow-500",
+      A_CAMINHO: "bg-teal-500",
+      CHEGOU: "bg-orange-500",
       ENTREGUE: "bg-green-500",
+      PENDENTE: "bg-orange-600",
       CANCELADO: "bg-red-500",
     };
     return colors[status] || "bg-gray-500";
@@ -220,13 +231,15 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="PENDENTE">Pendente</SelectItem>
+            <SelectItem value="SOLICITADO">Solicitado</SelectItem>
             <SelectItem value="ACEITO">Aceito</SelectItem>
-            <SelectItem value="EM_PREPARO">Em Preparo</SelectItem>
+            <SelectItem value="PREPARANDO">Preparando</SelectItem>
+            <SelectItem value="PRONTO">Pronto</SelectItem>
+            <SelectItem value="COLETADO">Coletado</SelectItem>
             <SelectItem value="A_CAMINHO">A Caminho</SelectItem>
-            <SelectItem value="NA_PORTA">Na Porta</SelectItem>
-            <SelectItem value="ENTREGA_PENDENTE">Entrega Pendente</SelectItem>
+            <SelectItem value="CHEGOU">Chegou no Local</SelectItem>
             <SelectItem value="ENTREGUE">Entregue</SelectItem>
+            <SelectItem value="PENDENTE">Pendente</SelectItem>
             <SelectItem value="CANCELADO">Cancelado</SelectItem>
           </SelectContent>
         </Select>
@@ -270,7 +283,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                   Ver Detalhes
                 </Button>
                 
-                {order.status === "PENDENTE" && (
+                {order.status === "SOLICITADO" && (
                   <>
                     <Button
                       size="sm"
@@ -287,12 +300,46 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                     </Button>
                   </>
                 )}
-                
-                {order.status === "ACEITO" && !order.assigned_driver && (
+
+                {order.status === "ACEITO" && (
+                  <Button
+                    size="sm"
+                    onClick={() => updateStatus(order.id, "PREPARANDO")}
+                  >
+                    Marcar como Preparando
+                  </Button>
+                )}
+
+                {order.status === "PREPARANDO" && (
+                  <Button
+                    size="sm"
+                    onClick={() => updateStatus(order.id, "PRONTO")}
+                  >
+                    Marcar como Pronto para Coleta
+                  </Button>
+                )}
+
+                {order.status === "PRONTO" && !order.assigned_driver && (
                   <Badge variant="outline" className="text-xs">
                     Aguardando entregador aceitar
                   </Badge>
                 )}
+                {order.status === "PRONTO" && order.assigned_driver && (
+                  <Badge variant="outline" className="text-xs">
+                    Entregador Atribuído
+                  </Badge>
+                )}
+
+                {order.status === "PENDENTE" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => updateStatus(order.id, "ACEITO")}
+                  >
+                    Resolver Problema (Aceitar novamente)
+                  </Button>
+                )}
+
               </div>
             </CardContent>
           </Card>
@@ -354,7 +401,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
               </TabsContent>
 
               <TabsContent value="assign" className="space-y-4">
-                {!selectedOrder.assigned_driver && selectedOrder.status !== "CANCELADO" && (
+                {selectedOrder.status === "ACEITO" && !selectedOrder.assigned_driver && (
                   <div className="space-y-3">
                     <Label>Selecionar Motorista</Label>
                     <Select value={selectedDriver} onValueChange={setSelectedDriver}>

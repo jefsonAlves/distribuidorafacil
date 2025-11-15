@@ -1,29 +1,34 @@
 export type OrderStatus = 
-  | 'PENDENTE' 
+  | 'SOLICITADO' 
   | 'ACEITO' 
-  | 'EM_PREPARO' 
+  | 'PREPARANDO' 
+  | 'PRONTO' 
+  | 'COLETADO' 
   | 'A_CAMINHO' 
-  | 'NA_PORTA' 
-  | 'ENTREGA_PENDENTE'
+  | 'CHEGOU' 
   | 'ENTREGUE' 
+  | 'PENDENTE'
   | 'CANCELADO';
 
 export const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  PENDENTE: ['ACEITO', 'CANCELADO'],
-  ACEITO: ['EM_PREPARO', 'CANCELADO'],
-  EM_PREPARO: ['A_CAMINHO', 'CANCELADO'],
-  A_CAMINHO: ['NA_PORTA', 'CANCELADO'],
-  NA_PORTA: ['ENTREGUE', 'ENTREGA_PENDENTE'],
-  ENTREGA_PENDENTE: ['ENTREGUE', 'CANCELADO'],
-  ENTREGUE: [], // Estado final
-  CANCELADO: [], // Estado final
+  SOLICITADO: ['ACEITO', 'CANCELADO'],
+  ACEITO: ['PREPARANDO', 'CANCELADO'],
+  PREPARANDO: ['PRONTO', 'CANCELADO'],
+  PRONTO: ['COLETADO', 'CANCELADO'],
+  COLETADO: ['A_CAMINHO', 'CANCELADO'],
+  A_CAMINHO: ['CHEGOU', 'CANCELADO', 'PENDENTE'],
+  CHEGOU: ['ENTREGUE', 'CANCELADO', 'PENDENTE'],
+  ENTREGUE: [], 
+  PENDENTE: ['COLETADO', 'A_CAMINHO', 'CHEGOU', 'ENTREGUE', 'CANCELADO'], 
+  CANCELADO: [], 
 };
 
 export const canTransitionTo = (
   currentStatus: OrderStatus, 
   newStatus: OrderStatus
 ): boolean => {
-  return VALID_TRANSITIONS[currentStatus]?.includes(newStatus) || false;
+  const validTransitions = VALID_TRANSITIONS[currentStatus];
+  return validTransitions ? validTransitions.includes(newStatus) : false;
 };
 
 export const getNextValidStates = (currentStatus: OrderStatus): OrderStatus[] => {
@@ -38,13 +43,15 @@ export const isValidTransition = (
 };
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  PENDENTE: 'Pendente',
+  SOLICITADO: 'Solicitado',
   ACEITO: 'Aceito',
-  EM_PREPARO: 'Em Preparo',
+  PREPARANDO: 'Preparando',
+  PRONTO: 'Pronto',
+  COLETADO: 'Coletado',
   A_CAMINHO: 'A Caminho',
-  NA_PORTA: 'Na Porta',
-  ENTREGA_PENDENTE: 'Entrega Pendente',
+  CHEGOU: 'Chegou no Local',
   ENTREGUE: 'Entregue',
+  PENDENTE: 'Pendente',
   CANCELADO: 'Cancelado',
 };
 
