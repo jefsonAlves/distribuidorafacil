@@ -113,6 +113,35 @@ Deno.serve(async (req) => {
       })
     }
 
+    let pix_code = null;
+    let pix_expiration = null;
+    let pix_qr_code_url = null;
+
+    if (payment_method === 'PIX') {
+      // Obter a chave PIX da empresa
+      const { data: tenantData, error: tenantError } = await supabaseClient
+        .from('tenants')
+        .select('pix_key')
+        .eq('id', tenant_id)
+        .single();
+
+      if (tenantError || !tenantData?.pix_key) {
+        return new Response(JSON.stringify({ error: 'Chave PIX da empresa não configurada.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const companyPixKey = tenantData.pix_key;
+
+      // TODO: Integrar com API de PIX para gerar QR Code e código
+      // Por enquanto, simulamos com dados fictícios
+      const uniquePixId = crypto.randomUUID(); // Usar um ID único para o PIX
+      pix_code = `pix-${uniquePixId}-${total.toFixed(2).replace('.', '')}`;
+      pix_expiration = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutos de expiração
+      pix_qr_code_url = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(pix_code)}`; // Exemplo de QR Code
+    }
+
     // Criar pedido
     const { data: order, error: orderError } = await supabaseClient
       .from('orders')
@@ -123,7 +152,10 @@ Deno.serve(async (req) => {
         payment_method,
         change_for: change_for || null,
         address: address as any,
-        status: 'PENDENTE',
+        status: 'SOLICITADO', // Novo status inicial para pedidos
+        pix_code,
+        pix_expiration,
+        pix_qr_code_url,
       })
       .select()
       .single()
@@ -165,7 +197,10 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         order_id: order.id,
-        message: 'Pedido criado com sucesso' 
+        message: 'Pedido criado com sucesso',
+        pix_code: pix_code, // Retorna os detalhes do PIX
+        pix_expiration: pix_expiration,
+        pix_qr_code_url: pix_qr_code_url,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

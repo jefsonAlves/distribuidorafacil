@@ -299,6 +299,24 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
               <Badge className="text-sm">{getStatusLabel(order.status)}</Badge>
             </div>
 
+            {/* Detalhes do Problema (se PENDENTE) */}
+            {order.status === "PENDENTE" && order.problem_category && order.problem_description && (
+              <div className="space-y-3 p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
+                <h3 className="font-semibold flex items-center gap-2 text-red-700 dark:text-red-300">
+                  <AlertTriangle className="h-4 w-4" />
+                  Problema Reportado
+                </h3>
+                <div className="text-sm space-y-1">
+                  <p>
+                    <span className="font-medium">Categoria:</span> {order.problem_category.replace(/_/g, " ")}
+                  </p>
+                  <p>
+                    <span className="font-medium">Descrição:</span> {order.problem_description}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Ações */}
             <div className="space-y-2">
               {isAssignedToMe && order.status === "PRONTO" && (
