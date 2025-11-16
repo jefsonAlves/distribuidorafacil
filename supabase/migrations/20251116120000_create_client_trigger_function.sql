@@ -8,8 +8,11 @@ DECLARE
     _cpf text;
     _tenant_id uuid;
 BEGIN
+    RAISE NOTICE 'Trigger handle_new_client_role ativado para user_id: % e role: %', NEW.user_id, NEW.role;
+
     -- Check if the inserted role is 'client'
     IF NEW.role = 'client' THEN
+        RAISE NOTICE 'Role é client. Buscando informações do perfil para user_id: %', NEW.user_id;
         -- Get user and profile information
         SELECT
             p.full_name,
@@ -20,9 +23,13 @@ BEGIN
         FROM public.profiles p
         WHERE p.user_id = NEW.user_id;
 
+        -- Log profile data
+        RAISE NOTICE 'Dados do perfil encontrados: full_name=%, email=%, phone=%, cpf=%, tenant_id=%', _full_name, _email, _phone, _cpf, _tenant_id;
+
         -- Insert into clients table
         INSERT INTO public.clients (user_id, full_name, email, phone, cpf, tenant_id)
         VALUES (NEW.user_id, _full_name, _email, _phone, _cpf, _tenant_id);
+        RAISE NOTICE 'Registro inserido na tabela clients para user_id: %', NEW.user_id;
     END IF;
 
     RETURN NEW;
