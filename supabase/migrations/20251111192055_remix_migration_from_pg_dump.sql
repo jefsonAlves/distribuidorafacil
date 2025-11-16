@@ -224,15 +224,15 @@ BEGIN
       ON CONFLICT (user_id, role) DO NOTHING;
     
     ELSE
-      INSERT INTO public.clients (user_id, full_name, email, phone, cpf)
-      VALUES (
-        NEW.id,
-        COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
-        NEW.email,
-        COALESCE(NEW.raw_user_meta_data->>'phone', ''),
-        COALESCE(NEW.raw_user_meta_data->>'cpf', '')
-      )
-      ON CONFLICT DO NOTHING;
+      -- INSERT INTO public.clients (user_id, full_name, email, phone, cpf)
+      -- VALUES (
+      --   NEW.id,
+      --   COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+      --   NEW.email,
+      --   COALESCE(NEW.raw_user_meta_data->>'phone', ''),
+      --   COALESCE(NEW.raw_user_meta_data->>'cpf', '')
+      -- )
+      -- ON CONFLICT DO NOTHING;
       
       INSERT INTO public.user_roles (user_id, role)
       VALUES (NEW.id, 'client'::app_role)

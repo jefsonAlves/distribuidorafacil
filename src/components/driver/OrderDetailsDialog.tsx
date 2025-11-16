@@ -75,7 +75,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         .from("orders")
         .update({ 
           assigned_driver: driverId,
-          status: "COLETADO", 
+          status: "ACEITO", 
           collected_at: new Date().toISOString() 
         })
         .eq("id", order.id);
@@ -136,7 +136,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
 
       if (newStatus === "PREPARANDO") {
         updates.preparing_at = new Date().toISOString();
-      } else if (newStatus === "COLETADO") {
+      } else if (newStatus === "ACEITO") {
         updates.collected_at = new Date().toISOString();
       } else if (newStatus === "A_CAMINHO") {
         updates.on_way_at = new Date().toISOString();
@@ -162,7 +162,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       
       const statusMessages: Record<string, string> = {
         PREPARANDO: "Pedido marcado como em preparação",
-        COLETADO: "Pedido coletado pelo entregador",
+        ACEITO: "Pedido aceito pelo entregador",
         A_CAMINHO: "Entrega iniciada! Boa viagem!",
         CHEGOU: "Chegada registrada no local",
         ENTREGUE: "🎉 Entrega concluída! Valor creditado na carteira da empresa.",
@@ -321,7 +321,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
             <div className="space-y-2">
               {isAssignedToMe && order.status === "PRONTO" && (
                 <Button 
-                  onClick={() => updateOrderStatus("COLETADO")} 
+                  onClick={() => updateOrderStatus("ACEITO")} 
                   disabled={loading}
                   className="w-full"
                   variant="default"
@@ -332,7 +332,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 </Button>
               )}
 
-              {isAssignedToMe && order.status === "COLETADO" && (
+              {isAssignedToMe && order.status === "ACEITO" && (
                 <Button 
                   onClick={() => updateOrderStatus("A_CAMINHO")} 
                   disabled={loading}

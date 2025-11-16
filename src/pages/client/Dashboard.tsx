@@ -45,7 +45,8 @@ const ClientDashboard = () => {
 
       // Se não existe, criar registro
       if (!clientData) {
-        toast.error("Cliente não encontrado. Por favor, complete seu cadastro através do link fornecido pela empresa.");
+        console.error("Erro crítico: Cliente não encontrado no dashboard, apesar de ter sessão ativa. User ID:", session.user.id);
+        toast.error("Não foi possível carregar seus dados de cliente. Por favor, tente novamente ou entre em contato com o suporte.");
         navigate("/");
         return;
       }

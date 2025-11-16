@@ -76,7 +76,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           order_items (id, name, quantity, unit_price)
         `)
         .eq("assigned_driver", driverId)
-        .in("status", ["COLETADO", "A_CAMINHO", "CHEGOU", "PENDENTE"])
+        .in("status", ["ACEITO", "COLETADO", "A_CAMINHO", "CHEGOU", "PENDENTE"])
         .order("created_at", { ascending: false });
 
       if (error1 || error2) throw error1 || error2;
@@ -153,7 +153,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
       COLETADO: { label: "Coletado", variant: "default" },
       A_CAMINHO: { label: "A Caminho", variant: "default" },
       CHEGOU: { label: "Chegou no Local", variant: "default" },
-      ENTREGUE: { label: "Entregue", variant: "success" }, // Supondo que 'success' seja uma variante válida ou usar 'default'
+      ENTREGUE: { label: "Entregue", variant: "default" },
       PENDENTE: { label: "Pendente", variant: "destructive" },
       CANCELADO: { label: "Cancelado", variant: "destructive" },
     };
@@ -186,7 +186,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
         .from("orders")
         .update({
           assigned_driver: driverId,
-          status: "COLETADO", // Altera o status para COLETADO quando o entregador aceita
+          status: "ACEITO", // Altera o status para ACEITO quando o entregador aceita
           collected_at: new Date().toISOString() // Adiciona o timestamp de coleta
         })
         .eq("id", orderId);

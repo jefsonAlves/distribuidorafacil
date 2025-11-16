@@ -125,6 +125,7 @@ const Register = () => {
 
         if (profileError) {
           console.error("Erro ao atualizar profile:", profileError);
+          toast.error("Erro ao vincular sua conta à empresa. Tente novamente mais tarde.");
         }
 
         // Inserir role client
@@ -134,6 +135,7 @@ const Register = () => {
 
         if (roleError) {
           console.error("Erro ao inserir role:", roleError);
+          toast.error("Erro ao definir seu tipo de usuário. Tente novamente mais tarde.");
         }
       }
 
