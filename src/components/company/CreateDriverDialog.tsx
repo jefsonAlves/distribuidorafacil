@@ -31,6 +31,11 @@ export const CreateDriverDialog = ({ open, onOpenChange, tenantId, onSuccess }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.vehicle) {
+      toast.error("Selecione o tipo de veículo");
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -185,9 +190,10 @@ export const CreateDriverDialog = ({ open, onOpenChange, tenantId, onSuccess }: 
                 <SelectValue placeholder="Selecione o veículo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="BIKE">Bicicleta</SelectItem>
-                <SelectItem value="MOTORCYCLE">Moto</SelectItem>
-                <SelectItem value="CAR">Carro</SelectItem>
+                <SelectItem value="BICICLETA">Bicicleta</SelectItem>
+                <SelectItem value="MOTO">Moto</SelectItem>
+                <SelectItem value="CARRO">Carro</SelectItem>
+                <SelectItem value="A_PE">A pé</SelectItem>
               </SelectContent>
             </Select>
           </div>
