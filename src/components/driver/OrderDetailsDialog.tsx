@@ -57,10 +57,26 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
   const acceptOrder = async () => {
     setLoading(true);
     try {
+      // Verificar se motorista já tem pedido em andamento
+      const { data: existingOrder } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("assigned_driver", driverId)
+        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "PENDENTE"])
+        .limit(1)
+        .maybeSingle();
+
+      if (existingOrder) {
+        toast.error("Você já tem uma entrega em andamento. Finalize ou cancele antes de aceitar outro pedido.");
+        onStatusUpdate();
+        onOpenChange(false);
+        return;
+      }
+
       // Verificar se ainda está disponível
       const { data: currentOrder } = await supabase
         .from("orders")
-        .select("assigned_driver")
+        .select("assigned_driver, status")
         .eq("id", order.id)
         .single();
 
@@ -71,18 +87,26 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         return;
       }
 
+      if (currentOrder?.status !== "ACEITO") {
+        toast.error("Este pedido não está mais disponível para aceitação");
+        onStatusUpdate();
+        onOpenChange(false);
+        return;
+      }
+
+      // Atualizar pedido: atribuir motorista e mudar status para A_CAMINHO automaticamente
       const { error } = await supabase
         .from("orders")
         .update({ 
           assigned_driver: driverId,
-          status: "ACEITO", 
-          accepted_at: new Date().toISOString() 
+          status: "A_CAMINHO", // Muda automaticamente para "Em Rota de Entrega"
+          on_way_at: new Date().toISOString() // Timestamp de início da entrega
         })
         .eq("id", order.id);
 
       if (error) throw error;
 
-      toast.success("🎉 Pedido aceito! Você pode iniciar a entrega.");
+      toast.success("🎉 Pedido aceito! Você está em rota de entrega.");
       onStatusUpdate();
       onOpenChange(false);
     } catch (error: any) {
@@ -134,10 +158,8 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
     try {
       const updates: any = { status: newStatus };
 
-      if (newStatus === "PREPARANDO") {
+      if (newStatus === "EM_PREPARO") {
         updates.preparing_at = new Date().toISOString();
-      } else if (newStatus === "ACEITO") {
-        updates.collected_at = new Date().toISOString();
       } else if (newStatus === "A_CAMINHO") {
         updates.on_way_at = new Date().toISOString();
       } else if (newStatus === "NA_PORTA") {
@@ -161,8 +183,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       if (error) throw error;
       
       const statusMessages: Record<string, string> = {
-        PREPARANDO: "Pedido marcado como em preparação",
-        ACEITO: "Pedido aceito pelo entregador",
+        EM_PREPARO: "Pedido marcado como em preparação",
         A_CAMINHO: "Entrega iniciada! Boa viagem!",
         NA_PORTA: "Chegada registrada no local",
         ENTREGUE: "🎉 Entrega concluída! Valor creditado na carteira da empresa.",
@@ -321,14 +342,14 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
             <div className="space-y-2">
               {isAssignedToMe && order.status === "EM_PREPARO" && (
                 <Button 
-                  onClick={() => updateOrderStatus("ACEITO")} 
+                  onClick={() => updateOrderStatus("A_CAMINHO")} 
                   disabled={loading}
                   className="w-full"
                   variant="default"
                   size="lg"
                 >
-                  <Package className="h-4 w-4 mr-2" />
-                  Coletar Pedido
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Iniciar Entrega
                 </Button>
               )}
 
@@ -340,7 +361,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                   variant="default"
                 >
                   <MapPin className="h-4 w-4 mr-2" />
-                  Entrega a Caminho
+                  Iniciar Entrega
                 </Button>
               )}
 

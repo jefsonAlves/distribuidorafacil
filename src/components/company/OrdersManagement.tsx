@@ -110,18 +110,33 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
 
     setLoading(true);
     try {
+      // Verificar se o motorista já tem pedido em andamento
+      const { data: existingOrder } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("assigned_driver", selectedDriver)
+        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "PENDENTE"])
+        .limit(1)
+        .maybeSingle();
+
+      if (existingOrder) {
+        toast.error("Este motorista já tem uma entrega em andamento.");
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from("orders")
         .update({ 
           assigned_driver: selectedDriver,
-          status: "ACEITO",
-          accepted_at: new Date().toISOString() // Adiciona o timestamp de aceitação
+          status: "A_CAMINHO", // Quando atribuído manualmente, já vai direto para "Em Rota"
+          on_way_at: new Date().toISOString()
         })
         .eq("id", selectedOrder.id);
 
       if (error) throw error;
       
-      toast.success("Motorista atribuído com sucesso!");
+      toast.success("Motorista atribuído com sucesso! Status atualizado para 'Em Rota de Entrega'.");
       setSelectedOrder(null);
       setSelectedDriver("");
       fetchOrders();
@@ -137,12 +152,19 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
     try {
       const updateData: any = { status: newStatus };
       
-      if (newStatus === "ACEITO") updateData.accepted_at = new Date().toISOString();
-      if (newStatus === "PREPARANDO") updateData.preparing_at = new Date().toISOString();
-      if (newStatus === "PRONTO") updateData.ready_at = new Date().toISOString();
-      if (newStatus === "COLETADO") updateData.collected_at = new Date().toISOString();
-      if (newStatus === "A_CAMINHO") updateData.on_way_at = new Date().toISOString();
-      if (newStatus === "CHEGOU") updateData.at_door_at = new Date().toISOString();
+      if (newStatus === "ACEITO") {
+        updateData.accepted_at = new Date().toISOString();
+        // Quando empresa aceita, o pedido fica disponível para todos os motoristas online
+      }
+      if (newStatus === "EM_PREPARO") {
+        updateData.preparing_at = new Date().toISOString();
+      }
+      if (newStatus === "A_CAMINHO") {
+        updateData.on_way_at = new Date().toISOString();
+      }
+      if (newStatus === "NA_PORTA") {
+        updateData.at_door_at = new Date().toISOString();
+      }
       if (newStatus === "ENTREGUE") {
         updateData.delivered_at = new Date().toISOString();
         updateData.payment_status = "PAID";
@@ -208,15 +230,12 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
 
   const getStatusColor = (status: string) => {
     const colors: any = {
-      SOLICITADO: "bg-gray-400",
+      PENDENTE: "bg-yellow-500",
       ACEITO: "bg-blue-500",
-      PREPARANDO: "bg-purple-500",
-      PRONTO: "bg-indigo-500",
-      COLETADO: "bg-yellow-500",
+      EM_PREPARO: "bg-purple-500",
       A_CAMINHO: "bg-teal-500",
-      CHEGOU: "bg-orange-500",
+      NA_PORTA: "bg-orange-500",
       ENTREGUE: "bg-green-500",
-      PENDENTE: "bg-orange-600",
       CANCELADO: "bg-red-500",
     };
     return colors[status] || "bg-gray-500";
@@ -231,15 +250,12 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="SOLICITADO">Solicitado</SelectItem>
-            <SelectItem value="ACEITO">Aceito</SelectItem>
-            <SelectItem value="PREPARANDO">Preparando</SelectItem>
-            <SelectItem value="PRONTO">Pronto</SelectItem>
-            <SelectItem value="COLETADO">Coletado</SelectItem>
-            <SelectItem value="A_CAMINHO">A Caminho</SelectItem>
-            <SelectItem value="CHEGOU">Chegou no Local</SelectItem>
-            <SelectItem value="ENTREGUE">Entregue</SelectItem>
-            <SelectItem value="PENDENTE">Pendente</SelectItem>
+            <SelectItem value="PENDENTE">Pedido Realizado</SelectItem>
+            <SelectItem value="ACEITO">Aguardando Motorista</SelectItem>
+            <SelectItem value="EM_PREPARO">Em Preparo</SelectItem>
+            <SelectItem value="A_CAMINHO">Em Rota de Entrega</SelectItem>
+            <SelectItem value="NA_PORTA">Chegou no Local</SelectItem>
+            <SelectItem value="ENTREGUE">Entrega Concluída</SelectItem>
             <SelectItem value="CANCELADO">Cancelado</SelectItem>
           </SelectContent>
         </Select>
@@ -283,7 +299,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                   Ver Detalhes
                 </Button>
                 
-                {order.status === "SOLICITADO" && (
+                {order.status === "PENDENTE" && (
                   <>
                     <Button
                       size="sm"
@@ -301,32 +317,30 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                   </>
                 )}
 
+                {order.status === "ACEITO" && !order.assigned_driver && (
+                  <Badge variant="outline" className="text-xs">
+                    Aguardando motorista aceitar
+                  </Badge>
+                )}
+
+                {order.status === "ACEITO" && order.assigned_driver && (
+                  <Badge variant="outline" className="text-xs">
+                    Motorista atribuído - Em rota
+                  </Badge>
+                )}
+
                 {order.status === "ACEITO" && (
                   <Button
                     size="sm"
-                    onClick={() => updateStatus(order.id, "PREPARANDO")}
+                    onClick={() => updateStatus(order.id, "EM_PREPARO")}
                   >
-                    Marcar como Preparando
+                    Marcar como Em Preparo
                   </Button>
                 )}
 
-                {order.status === "PREPARANDO" && (
-                  <Button
-                    size="sm"
-                    onClick={() => updateStatus(order.id, "PRONTO")}
-                  >
-                    Marcar como Pronto para Coleta
-                  </Button>
-                )}
-
-                {order.status === "PRONTO" && !order.assigned_driver && (
+                {order.status === "EM_PREPARO" && (
                   <Badge variant="outline" className="text-xs">
-                    Aguardando entregador aceitar
-                  </Badge>
-                )}
-                {order.status === "PRONTO" && order.assigned_driver && (
-                  <Badge variant="outline" className="text-xs">
-                    Entregador Atribuído
+                    Pedido em preparo - Aguardando motorista
                   </Badge>
                 )}
 
@@ -403,7 +417,15 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
               <TabsContent value="assign" className="space-y-4">
                 {selectedOrder.status === "ACEITO" && !selectedOrder.assigned_driver && (
                   <div className="space-y-3">
-                    <Label>Selecionar Motorista</Label>
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-sm text-blue-900 dark:text-blue-100">
+                        Este pedido está disponível para todos os motoristas online. O primeiro motorista que aceitar será automaticamente atribuído.
+                      </p>
+                    </div>
+                    <Label>Atribuir Motorista Manualmente (Opcional)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Normalmente os motoristas aceitam automaticamente. Use esta opção apenas se precisar atribuir manualmente.
+                    </p>
                     <Select value={selectedDriver} onValueChange={setSelectedDriver}>
                       <SelectTrigger>
                         <SelectValue placeholder="Escolha um motorista" />
@@ -416,8 +438,8 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button onClick={assignDriver} disabled={loading || !selectedDriver} className="w-full">
-                      {loading ? "Atribuindo..." : "Atribuir Motorista"}
+                    <Button onClick={assignDriver} disabled={loading || !selectedDriver} className="w-full" variant="outline">
+                      {loading ? "Atribuindo..." : "Atribuir Motorista Manualmente"}
                     </Button>
                   </div>
                 )}

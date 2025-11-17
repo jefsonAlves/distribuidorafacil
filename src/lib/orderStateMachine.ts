@@ -1,15 +1,15 @@
 export type OrderStatus = 
-  | 'PENDENTE'    // Pedido criado, aguardando aceitação da empresa
-  | 'ACEITO'      // Empresa aceitou o pedido
-  | 'EM_PREPARO'  // Pedido está sendo preparado
-  | 'A_CAMINHO'   // Entregador está a caminho
-  | 'NA_PORTA'    // Entregador chegou no local
-  | 'ENTREGUE'    // Pedido foi entregue com sucesso
-  | 'CANCELADO';  // Pedido foi cancelado
+  | 'PENDENTE'    // Pedido Realizado: Cliente solicitou o produto, aguardando aceitação da empresa
+  | 'ACEITO'      // Pedido Aceito - Aguardando Motorista: Empresa aceitou o pedido, disponível para todos os motoristas online
+  | 'EM_PREPARO'  // Em Preparo: Pedido está sendo preparado (opcional)
+  | 'A_CAMINHO'   // Em Rota de Entrega: Motorista aceitou e está a caminho do cliente
+  | 'NA_PORTA'    // Na Porta: Motorista chegou no local de entrega
+  | 'ENTREGUE'    // Entrega Concluída: Pedido foi entregue com sucesso ao cliente
+  | 'CANCELADO';  // Entrega Cancelada: Pedido foi cancelado pela empresa
 
 export const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDENTE: ['ACEITO', 'CANCELADO'],
-  ACEITO: ['EM_PREPARO', 'CANCELADO'],
+  ACEITO: ['EM_PREPARO', 'A_CAMINHO', 'CANCELADO'], // Pode ir direto para A_CAMINHO quando motorista aceita
   EM_PREPARO: ['A_CAMINHO', 'CANCELADO'],
   A_CAMINHO: ['NA_PORTA', 'CANCELADO'],
   NA_PORTA: ['ENTREGUE', 'CANCELADO'],
@@ -37,12 +37,12 @@ export const isValidTransition = (
 };
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  PENDENTE: 'Aguardando Aprovação',
-  ACEITO: 'Aceito',
+  PENDENTE: 'Pedido Realizado',
+  ACEITO: 'Aguardando Motorista',
   EM_PREPARO: 'Em Preparo',
-  A_CAMINHO: 'A Caminho',
-  NA_PORTA: 'Na Porta',
-  ENTREGUE: 'Entregue',
+  A_CAMINHO: 'Em Rota de Entrega',
+  NA_PORTA: 'Chegou no Local',
+  ENTREGUE: 'Entrega Concluída',
   CANCELADO: 'Cancelado',
 };
 

@@ -55,19 +55,38 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      // Buscar pedidos disponíveis (status ACEITO pela empresa e sem driver atribuído)
-      const { data: fetchedAvailableOrders, error: error1 } = await supabase
+      // Primeiro verificar se o motorista tem algum pedido em andamento
+      const { data: inProgressCheck, error: checkError } = await supabase
         .from("orders")
-        .select(`
-          *,
-          clients (full_name, phone, tenant_id),
-          order_items (id, name, quantity, unit_price)
-        `)
-        .eq("status", "ACEITO")
-        .is("assigned_driver", null)
-        .order("created_at", { ascending: true });
+        .select("id")
+        .eq("assigned_driver", driverId)
+        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "PENDENTE"])
+        .limit(1);
 
-      // Buscar pedidos em andamento (atribuídos a este driver com status COLETADO, A_CAMINHO, CHEGOU, PENDENTE)
+      if (checkError) throw checkError;
+
+      const hasOrderInProgress = (inProgressCheck?.length || 0) > 0;
+
+      // Buscar pedidos disponíveis (status ACEITO pela empresa e sem driver atribuído)
+      // Só mostrar se o motorista não tiver pedido em andamento
+      let fetchedAvailableOrders: any[] = [];
+      if (!hasOrderInProgress) {
+        const { data, error: error1 } = await supabase
+          .from("orders")
+          .select(`
+            *,
+            clients (full_name, phone, tenant_id),
+            order_items (id, name, quantity, unit_price)
+          `)
+          .eq("status", "ACEITO")
+          .is("assigned_driver", null)
+          .order("created_at", { ascending: true });
+
+        if (error1) throw error1;
+        fetchedAvailableOrders = data || [];
+      }
+
+      // Buscar pedidos em andamento (atribuídos a este driver)
       const { data: fetchedInProgressOrders, error: error2 } = await supabase
         .from("orders")
         .select(`
@@ -79,9 +98,9 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
         .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "PENDENTE"])
         .order("created_at", { ascending: false });
 
-      if (error1 || error2) throw error1 || error2;
+      if (error2) throw error2;
       
-      setAvailableOrders(fetchedAvailableOrders || []);
+      setAvailableOrders(fetchedAvailableOrders);
       setInProgressOrders(fetchedInProgressOrders || []);
     } catch (error: any) {
       console.error("Erro ao buscar pedidos:", error);
@@ -121,15 +140,18 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           if (!newOrder && !oldOrder) return;
 
           // Re-fetch se:
-          // 1. Um pedido se torna PRONTO e não atribuído (disponível)
+          // 1. Um pedido se torna ACEITO e não atribuído (disponível para motoristas)
           // 2. Um pedido é atribuído a este driver
           // 3. O status de um pedido atribuído a este driver muda (e não foi ENTREGUE/CANCELADO)
-          const isNowAvailable = newOrder?.status === 'PRONTO' && !newOrder?.assigned_driver;
+          // 4. Um pedido atribuído a este driver foi finalizado (ENTREGUE/CANCELADO) - libera para ver novos
+          const isNowAvailable = newOrder?.status === 'ACEITO' && !newOrder?.assigned_driver;
           const isNowAssignedToMe = newOrder?.assigned_driver === driverId && newOrder?.status !== 'ENTREGUE' && newOrder?.status !== 'CANCELADO';
-          const wasAssignedToMeAndStatusChanged = oldOrder?.assigned_driver === driverId && newOrder?.status !== oldOrder?.status && newOrder?.status !== 'ENTREGUE' && newOrder?.status !== 'CANCELADO';
+          const wasAssignedToMeAndStatusChanged = oldOrder?.assigned_driver === driverId && newOrder?.status !== oldOrder?.status;
           const wasAssignedToMeAndNowNot = oldOrder?.assigned_driver === driverId && newOrder?.assigned_driver !== driverId;
+          const wasAssignedToMeAndNowFinished = oldOrder?.assigned_driver === driverId && (newOrder?.status === 'ENTREGUE' || newOrder?.status === 'CANCELADO');
+          const statusChangedToAccepted = oldOrder?.status !== 'ACEITO' && newOrder?.status === 'ACEITO' && !newOrder?.assigned_driver;
           
-          if (isNowAvailable || isNowAssignedToMe || wasAssignedToMeAndStatusChanged || wasAssignedToMeAndNowNot) {
+          if (isNowAvailable || isNowAssignedToMe || wasAssignedToMeAndStatusChanged || wasAssignedToMeAndNowNot || wasAssignedToMeAndNowFinished || statusChangedToAccepted) {
             fetchOrdersWithDebounce();
           }
         }
@@ -145,20 +167,17 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   }, [driverId, fetchOrders]);
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      SOLICITADO: { label: "Solicitado", variant: "outline" },
-      ACEITO: { label: "Aceito", variant: "secondary" },
-      PREPARANDO: { label: "Preparando", variant: "default" },
-      PRONTO: { label: "Pronto para Coleta", variant: "default" },
-      COLETADO: { label: "Coletado", variant: "default" },
-      A_CAMINHO: { label: "A Caminho", variant: "default" },
-      CHEGOU: { label: "Chegou no Local", variant: "default" },
-      ENTREGUE: { label: "Entregue", variant: "default" },
-      PENDENTE: { label: "Pendente", variant: "destructive" },
-      CANCELADO: { label: "Cancelado", variant: "destructive" },
+    const statusMap: Record<string, { variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      PENDENTE: { variant: "outline" },
+      ACEITO: { variant: "secondary" },
+      EM_PREPARO: { variant: "default" },
+      A_CAMINHO: { variant: "default" },
+      NA_PORTA: { variant: "default" },
+      ENTREGUE: { variant: "default" },
+      CANCELADO: { variant: "destructive" },
     };
-    const config = statusMap[status] || { label: status, variant: "outline" };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const config = statusMap[status] || { variant: "outline" };
+    return <Badge variant={config.variant}>{getStatusLabel(status)}</Badge>;
   };
 
   const handleViewDetails = (order: any) => {
@@ -169,10 +188,25 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   const handleAcceptOrder = async (orderId: string) => {
     setLoading(true);
     try {
+      // Verificar se motorista já tem pedido em andamento
+      const { data: existingOrder } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("assigned_driver", driverId)
+        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "PENDENTE"])
+        .limit(1)
+        .maybeSingle();
+
+      if (existingOrder) {
+        toast.error("Você já tem uma entrega em andamento. Finalize ou cancele antes de aceitar outro pedido.");
+        fetchOrders();
+        return;
+      }
+
       // Verificar se ainda está disponível
       const { data: currentOrder } = await supabase
         .from("orders")
-        .select("assigned_driver")
+        .select("assigned_driver, status")
         .eq("id", orderId)
         .single();
 
@@ -182,18 +216,25 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
         return;
       }
 
+      if (currentOrder?.status !== "ACEITO") {
+        toast.error("Este pedido não está mais disponível para aceitação");
+        fetchOrders();
+        return;
+      }
+
+      // Atualizar pedido: atribuir motorista e mudar status para A_CAMINHO automaticamente
       const { error } = await supabase
         .from("orders")
         .update({
           assigned_driver: driverId,
-          status: "ACEITO", // Altera o status para ACEITO quando o entregador aceita
-          collected_at: new Date().toISOString() // Adiciona o timestamp de coleta
+          status: "A_CAMINHO", // Muda automaticamente para "Em Rota de Entrega"
+          on_way_at: new Date().toISOString() // Timestamp de início da entrega
         })
         .eq("id", orderId);
 
       if (error) throw error;
 
-      toast.success("🎉 Pedido aceito! Você pode iniciar a entrega.");
+      toast.success("🎉 Pedido aceito! Você está em rota de entrega.");
       fetchOrders();
     } catch (error: any) {
       console.error("Erro ao aceitar pedido:", error);

@@ -94,12 +94,12 @@ export const OrderHistory = ({ clientId }: OrderHistoryProps) => {
 
   const getStatusLabel = (status: string) => {
     const labels: any = {
-      PENDENTE: "Aguardando",
-      ACEITO: "Aceito",
+      PENDENTE: "Pedido Realizado",
+      ACEITO: "Aguardando Motorista",
       EM_PREPARO: "Em Preparo",
-      A_CAMINHO: "A Caminho",
-      NA_PORTA: "Chegou",
-      ENTREGUE: "Entregue",
+      A_CAMINHO: "Em Rota de Entrega",
+      NA_PORTA: "Chegou no Local",
+      ENTREGUE: "Entrega Concluída",
       CANCELADO: "Cancelado",
     };
     return labels[status] || status;
