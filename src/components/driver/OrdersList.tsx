@@ -55,7 +55,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      // Buscar pedidos disponíveis (status PRONTO e sem driver atribuído)
+      // Buscar pedidos disponíveis (status ACEITO pela empresa e sem driver atribuído)
       const { data: fetchedAvailableOrders, error: error1 } = await supabase
         .from("orders")
         .select(`
@@ -63,7 +63,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           clients (full_name, phone, tenant_id),
           order_items (id, name, quantity, unit_price)
         `)
-        .eq("status", "EM_PREPARO")
+        .eq("status", "ACEITO")
         .is("assigned_driver", null)
         .order("created_at", { ascending: true });
 
