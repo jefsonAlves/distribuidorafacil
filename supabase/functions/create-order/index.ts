@@ -152,10 +152,7 @@ Deno.serve(async (req) => {
         payment_method,
         change_for: change_for || null,
         address: address as any,
-        status: 'SOLICITADO', // Novo status inicial para pedidos
-        pix_code,
-        pix_expiration,
-        pix_qr_code_url,
+        status: 'PENDENTE', // Status inicial aguardando aprovação da empresa
       })
       .select()
       .single()
@@ -198,9 +195,6 @@ Deno.serve(async (req) => {
         success: true, 
         order_id: order.id,
         message: 'Pedido criado com sucesso',
-        pix_code: pix_code, // Retorna os detalhes do PIX
-        pix_expiration: pix_expiration,
-        pix_qr_code_url: pix_qr_code_url,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
