@@ -1,26 +1,20 @@
 export type OrderStatus = 
-  | 'SOLICITADO' 
-  | 'ACEITO' 
-  | 'PREPARANDO' 
-  | 'PRONTO' 
-  | 'COLETADO' 
-  | 'A_CAMINHO' 
-  | 'CHEGOU' 
-  | 'ENTREGUE' 
-  | 'PENDENTE'
-  | 'CANCELADO';
+  | 'PENDENTE'    // Pedido criado, aguardando aceitação da empresa
+  | 'ACEITO'      // Empresa aceitou o pedido
+  | 'EM_PREPARO'  // Pedido está sendo preparado
+  | 'A_CAMINHO'   // Entregador está a caminho
+  | 'NA_PORTA'    // Entregador chegou no local
+  | 'ENTREGUE'    // Pedido foi entregue com sucesso
+  | 'CANCELADO';  // Pedido foi cancelado
 
 export const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  SOLICITADO: ['ACEITO', 'CANCELADO'],
-  ACEITO: ['PREPARANDO', 'CANCELADO'],
-  PREPARANDO: ['PRONTO', 'CANCELADO'],
-  PRONTO: ['COLETADO', 'CANCELADO'],
-  COLETADO: ['A_CAMINHO', 'CANCELADO'],
-  A_CAMINHO: ['CHEGOU', 'CANCELADO', 'PENDENTE'],
-  CHEGOU: ['ENTREGUE', 'CANCELADO', 'PENDENTE'],
-  ENTREGUE: [], 
-  PENDENTE: ['COLETADO', 'A_CAMINHO', 'CHEGOU', 'ENTREGUE', 'CANCELADO'], 
-  CANCELADO: [], 
+  PENDENTE: ['ACEITO', 'CANCELADO'],
+  ACEITO: ['EM_PREPARO', 'CANCELADO'],
+  EM_PREPARO: ['A_CAMINHO', 'CANCELADO'],
+  A_CAMINHO: ['NA_PORTA', 'CANCELADO'],
+  NA_PORTA: ['ENTREGUE', 'CANCELADO'],
+  ENTREGUE: [],    // Estado final, sem transições
+  CANCELADO: [],   // Estado final, sem transições
 };
 
 export const canTransitionTo = (
@@ -43,15 +37,12 @@ export const isValidTransition = (
 };
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  SOLICITADO: 'Solicitado',
+  PENDENTE: 'Aguardando Aprovação',
   ACEITO: 'Aceito',
-  PREPARANDO: 'Preparando',
-  PRONTO: 'Pronto',
-  COLETADO: 'Coletado',
+  EM_PREPARO: 'Em Preparo',
   A_CAMINHO: 'A Caminho',
-  CHEGOU: 'Chegou no Local',
+  NA_PORTA: 'Na Porta',
   ENTREGUE: 'Entregue',
-  PENDENTE: 'Pendente',
   CANCELADO: 'Cancelado',
 };
 
