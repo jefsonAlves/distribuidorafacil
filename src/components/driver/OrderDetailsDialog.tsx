@@ -76,7 +76,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         .update({ 
           assigned_driver: driverId,
           status: "ACEITO", 
-          collected_at: new Date().toISOString() 
+          accepted_at: new Date().toISOString() 
         })
         .eq("id", order.id);
 
