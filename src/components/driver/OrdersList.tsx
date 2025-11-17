@@ -63,7 +63,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           clients (full_name, phone, tenant_id),
           order_items (id, name, quantity, unit_price)
         `)
-        .eq("status", "PRONTO")
+        .eq("status", "EM_PREPARO")
         .is("assigned_driver", null)
         .order("created_at", { ascending: true });
 
@@ -76,7 +76,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           order_items (id, name, quantity, unit_price)
         `)
         .eq("assigned_driver", driverId)
-        .in("status", ["ACEITO", "COLETADO", "A_CAMINHO", "CHEGOU", "PENDENTE"])
+        .in("status", ["ACEITO", "EM_PREPARO", "A_CAMINHO", "NA_PORTA", "PENDENTE"])
         .order("created_at", { ascending: false });
 
       if (error1 || error2) throw error1 || error2;

@@ -113,29 +113,61 @@ const Register = () => {
 
       if (error) throw error;
 
-      // Se for cliente via link, atualizar profile e adicionar role
-      if (companySlug && tenantId && data.user) {
+      // SEMPRE inserir role para clientes, mesmo sem link da empresa
+      if (data.user && userType === "client") {
         const userId = data.user.id;
 
-        // Atualizar profile com tenant_id
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ tenant_id: tenantId })
-          .eq("id", userId);
+        // Se for cliente via link, atualizar profile com tenant_id
+        if (companySlug && tenantId) {
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .update({ tenant_id: tenantId })
+            .eq("id", userId);
 
-        if (profileError) {
-          console.error("Erro ao atualizar profile:", profileError);
-          toast.error("Erro ao vincular sua conta à empresa. Tente novamente mais tarde.");
+          if (profileError) {
+            console.error("Erro ao atualizar profile:", profileError);
+            toast.error("Erro ao vincular sua conta à empresa. Tente novamente mais tarde.");
+          }
         }
 
-        // Inserir role client
+        // SEMPRE inserir role client (com ou sem link da empresa)
         const { error: roleError } = await supabase
           .from("user_roles")
           .insert({ user_id: userId, role: "client" });
 
         if (roleError) {
           console.error("Erro ao inserir role:", roleError);
-          toast.error("Erro ao definir seu tipo de usuário. Tente novamente mais tarde.");
+          // Tentar com upsert em caso de conflito
+          const { error: upsertError } = await supabase
+            .from("user_roles")
+            .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
+          
+          if (upsertError) {
+            console.error("Erro ao fazer upsert da role:", upsertError);
+            toast.error("Erro ao definir seu tipo de usuário. Tente novamente mais tarde.");
+            return;
+          }
+        }
+
+        // Verificar se a role foi realmente criada antes de continuar
+        let roleCreated = false;
+        for (let i = 0; i < 3; i++) {
+          const { data: roleCheck } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId)
+            .eq("role", "client")
+            .maybeSingle();
+          
+          if (roleCheck) {
+            roleCreated = true;
+            break;
+          }
+          if (i < 2) await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        if (!roleCreated) {
+          toast.warning("Role ainda não foi criada. Aguarde alguns segundos antes de fazer login.");
         }
       }
 

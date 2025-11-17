@@ -140,7 +140,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         updates.collected_at = new Date().toISOString();
       } else if (newStatus === "A_CAMINHO") {
         updates.on_way_at = new Date().toISOString();
-      } else if (newStatus === "CHEGOU") {
+      } else if (newStatus === "NA_PORTA") {
         updates.at_door_at = new Date().toISOString();
       } else if (newStatus === "ENTREGUE") {
         updates.delivered_at = new Date().toISOString();
@@ -164,7 +164,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         PREPARANDO: "Pedido marcado como em preparação",
         ACEITO: "Pedido aceito pelo entregador",
         A_CAMINHO: "Entrega iniciada! Boa viagem!",
-        CHEGOU: "Chegada registrada no local",
+        NA_PORTA: "Chegada registrada no local",
         ENTREGUE: "🎉 Entrega concluída! Valor creditado na carteira da empresa.",
         PENDENTE: "Entrega marcada como pendente",
         CANCELADO: "Pedido cancelado"
@@ -319,7 +319,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
 
             {/* Ações */}
             <div className="space-y-2">
-              {isAssignedToMe && order.status === "PRONTO" && (
+              {isAssignedToMe && order.status === "EM_PREPARO" && (
                 <Button 
                   onClick={() => updateOrderStatus("ACEITO")} 
                   disabled={loading}
@@ -346,7 +346,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
 
               {isAssignedToMe && order.status === "A_CAMINHO" && (
                 <Button 
-                  onClick={() => updateOrderStatus("CHEGOU")} 
+                  onClick={() => updateOrderStatus("NA_PORTA")} 
                   disabled={loading}
                   className="w-full"
                   variant="default"
@@ -356,7 +356,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 </Button>
               )}
 
-              {isAssignedToMe && order.status === "CHEGOU" && (
+              {isAssignedToMe && order.status === "NA_PORTA" && (
                 <Button 
                   onClick={() => updateOrderStatus("ENTREGUE")} 
                   disabled={loading}
@@ -367,7 +367,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 </Button>
               )}
 
-              {isAssignedToMe && (order.status === "A_CAMINHO" || order.status === "CHEGOU") && (
+              {isAssignedToMe && (order.status === "A_CAMINHO" || order.status === "NA_PORTA") && (
                 <Button 
                   onClick={() => updateOrderStatus("PENDENTE")}
                   disabled={loading}

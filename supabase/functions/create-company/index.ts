@@ -158,14 +158,53 @@ serve(async (req) => {
 
     if (roleError) {
       console.error('Role error:', roleError);
-      // Rollback
-      await supabase.from('profiles').delete().eq('id', userId);
-      await supabase.from('tenants').delete().eq('id', tenant.id);
-      await supabase.auth.admin.deleteUser(userId);
-      throw new Error('Erro ao criar permissão');
+      // Tentar com upsert em caso de conflito
+      const { error: upsertError } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: userId,
+          role: 'company_admin',
+        }, { onConflict: 'user_id,role' });
+
+      if (upsertError) {
+        console.error('Upsert role also failed:', upsertError);
+        // Rollback
+        await supabase.from('profiles').delete().eq('id', userId);
+        await supabase.from('tenants').delete().eq('id', tenant.id);
+        await supabase.auth.admin.deleteUser(userId);
+        throw new Error('Erro ao criar permissão');
+      }
     }
 
-    console.log('Role created');
+    // Verificar se a role foi realmente criada
+    const { data: roleCheck, error: roleCheckError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'company_admin')
+      .maybeSingle();
+
+    if (roleCheckError || !roleCheck) {
+      console.error('Role verification failed:', roleCheckError);
+      // Tentar criar novamente com upsert
+      const { error: retryError } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: userId,
+          role: 'company_admin'
+        }, { onConflict: 'user_id,role' });
+
+      if (retryError) {
+        console.error('Retry also failed:', retryError);
+        // Rollback
+        await supabase.from('profiles').delete().eq('id', userId);
+        await supabase.from('tenants').delete().eq('id', tenant.id);
+        await supabase.auth.admin.deleteUser(userId);
+        throw new Error('Erro ao criar permissão - verificação falhou');
+      }
+    }
+
+    console.log('Role created and verified');
 
     // tenant_features será criado automaticamente via trigger
 

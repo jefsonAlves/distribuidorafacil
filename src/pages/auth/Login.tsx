@@ -26,18 +26,73 @@ const Login = () => {
 
   const redirectBasedOnRole = async (userId: string) => {
     try {
-      // Buscar roles do usuário
-      const { data: roles, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
+      // Buscar roles do usuário com retry (para lidar com problemas de sincronização)
+      let roles = null;
+      let error = null;
+      
+      for (let i = 0; i < 3; i++) {
+        const result = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
+        
+        roles = result.data;
+        error = result.error;
+        
+        if (roles && roles.length > 0) break;
+        if (i < 2) await new Promise(resolve => setTimeout(resolve, 500)); // Aguardar 500ms antes de tentar novamente
+      }
 
       if (error) throw error;
 
+      // Se não tem role, tentar criar usando edge function
       if (!roles || roles.length === 0) {
-        toast.error("Usuário sem permissões definidas");
-        await supabase.auth.signOut();
-        return;
+        console.log("Usuário sem role detectado, tentando criar automaticamente...");
+        
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData.session) {
+            throw new Error("Sem sessão ativa");
+          }
+
+          // Chamar edge function para criar role
+          const { data: roleData, error: roleFunctionError } = await supabase.functions.invoke(
+            'create-user-role',
+            {
+              headers: {
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+              },
+            }
+          );
+
+          if (!roleFunctionError && roleData?.success) {
+            console.log(`Role ${roleData.role} criada automaticamente via edge function`);
+            // Buscar novamente
+            for (let i = 0; i < 3; i++) {
+              const retryResult = await supabase
+                .from("user_roles")
+                .select("role")
+                .eq("user_id", userId);
+              
+              if (retryResult.data && retryResult.data.length > 0) {
+                roles = retryResult.data;
+                break;
+              }
+              if (i < 2) await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          } else {
+            console.error("Erro ao criar role via edge function:", roleFunctionError || roleData?.error);
+          }
+        } catch (createError) {
+          console.error("Erro ao tentar criar role:", createError);
+        }
+
+        // Se ainda não tem role após tentar criar
+        if (!roles || roles.length === 0) {
+          toast.error("Usuário sem permissões definidas. Entre em contato com o suporte.");
+          await supabase.auth.signOut();
+          return;
+        }
       }
 
       // Redirecionar baseado na role

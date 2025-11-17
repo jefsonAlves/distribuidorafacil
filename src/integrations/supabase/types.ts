@@ -96,7 +96,7 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
-          tenant_id: string
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -108,7 +108,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
-          tenant_id: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -120,7 +120,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
