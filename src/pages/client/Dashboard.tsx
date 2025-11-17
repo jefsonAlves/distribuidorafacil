@@ -34,7 +34,7 @@ const ClientDashboard = () => {
 
       setUser(session.user);
 
-      // FASE 5: Buscar ou criar registro de cliente
+      // FASE 5: Buscar ou criar registro de cliente com retry automático
       let { data: clientData, error: clientError } = await supabase
         .from("clients")
         .select("id, tenant_id")
@@ -43,12 +43,41 @@ const ClientDashboard = () => {
 
       if (clientError) throw clientError;
 
-      // Se não existe, criar registro
+      // Se não existe, tentar corrigir automaticamente via edge function
       if (!clientData) {
-        console.error("Erro crítico: Cliente não encontrado no dashboard, apesar de ter sessão ativa. User ID:", session.user.id);
-        toast.error("Não foi possível carregar seus dados de cliente. Por favor, tente novamente ou entre em contato com o suporte.");
-        navigate("/");
-        return;
+        console.warn("Cliente não encontrado. Tentando criar automaticamente...");
+        
+        try {
+          const { data: repairData, error: repairError } = await supabase.functions.invoke("repair-orphan-user");
+          
+          if (repairError) throw repairError;
+          
+          if (repairData?.success) {
+            // Retry: buscar cliente novamente após correção
+            const { data: retryClientData, error: retryError } = await supabase
+              .from("clients")
+              .select("id, tenant_id")
+              .eq("user_id", session.user.id)
+              .maybeSingle();
+            
+            if (retryError) throw retryError;
+            
+            if (retryClientData) {
+              clientData = retryClientData;
+              toast.success("Dados corrigidos automaticamente!");
+            } else {
+              throw new Error("Falha ao criar registro de cliente");
+            }
+          }
+        } catch (retryError) {
+          console.error("Erro ao tentar corrigir dados:", retryError);
+          toast.error(
+            "Não foi possível acessar seus dados. Entre em contato com o suporte.",
+            { duration: 6000 }
+          );
+          navigate("/");
+          return;
+        }
       }
 
       if (clientData) {
