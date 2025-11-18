@@ -29,14 +29,6 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<any>(null);
 
-  useEffect(() => {
-    fetchOrders();
-    fetchDrivers();
-  }, [tenantId, statusFilter]);
-
-  // Usar hook de realtime para atualização automática
-  useOrdersListRealtime(tenantId, fetchOrders, true);
-
   const fetchOrders = async () => {
     try {
       let query = supabase
@@ -78,7 +70,13 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
     }
   };
 
-  // Realtime agora é gerenciado pelo hook useOrdersListRealtime
+  useEffect(() => {
+    fetchOrders();
+    fetchDrivers();
+  }, [tenantId, statusFilter]);
+
+  // Usar hook de realtime para atualização automática
+  useOrdersListRealtime(tenantId, fetchOrders, true);
 
   const assignDriver = async () => {
     if (!selectedOrder || !selectedDriver) return;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Loader2, QrCode, Copy, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,23 +61,8 @@ export const PaymentPixDialog = ({
       setTimeLeft(30 * 60);
       setPixState("waiting");
 
-      // Salvar dados PIX no pedido
-      supabase
-        .from("orders")
-        .update({
-          payment_data: {
-            method: "PIX",
-            pix_code: code,
-            qr_code_url: qrCodeUrl,
-            expires_at: expiration.toISOString(),
-            generated_at: new Date().toISOString(),
-          },
-        })
-        .eq("id", orderId)
-        .then(() => {
-          // Iniciar verificação de pagamento
-          startPaymentCheck();
-        });
+      // Iniciar verificação de pagamento
+      startPaymentCheck();
     } else if (!open) {
       // Resetar quando fechar
       if (checkIntervalRef.current) {
