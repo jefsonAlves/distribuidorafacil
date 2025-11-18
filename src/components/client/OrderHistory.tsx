@@ -20,13 +20,6 @@ export const OrderHistory = ({ clientId }: OrderHistoryProps) => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [clientId, statusFilter]);
-
-  // Usar hook de realtime para atualização automática
-  useClientOrdersRealtime(clientId, fetchOrders, true);
-
   const fetchOrders = async () => {
     setLoading(true);
     try {
@@ -60,7 +53,12 @@ export const OrderHistory = ({ clientId }: OrderHistoryProps) => {
     }
   };
 
-  // Realtime agora é gerenciado pelo hook useClientOrdersRealtime
+  useEffect(() => {
+    fetchOrders();
+  }, [clientId, statusFilter]);
+
+  // Usar hook de realtime para atualização automática
+  useClientOrdersRealtime(clientId, fetchOrders, true);
 
   const getStatusColor = (status: string) => {
     const colors: any = {
