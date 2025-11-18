@@ -150,19 +150,34 @@ export const useClientOrdersRealtime = (
 };
 
 /**
- * Hook para atualizar pedidos do motorista em tempo real
+ * Hook para atualizar pedidos disponíveis para motoristas em tempo real
+ * Filtra por tenant_id e detecta novos pedidos ACEITOS
  */
 export const useDriverOrdersRealtime = (
-  driverId: string | null,
+  driverTenantId: string | null,
   onOrdersUpdate: () => void,
   enabled: boolean = true
 ) => {
   return useRealtimeUpdates({
     table: "orders",
-    filter: driverId ? `assigned_driver=eq.${driverId}` : undefined,
-    onUpdate: () => onOrdersUpdate(),
-    onInsert: () => onOrdersUpdate(),
-    enabled: enabled && !!driverId,
+    filter: driverTenantId ? `tenant_id=eq.${driverTenantId}` : undefined,
+    onUpdate: (payload) => {
+      // Atualizar se pedido mudou para ACEITO ou mudou assigned_driver
+      if (
+        payload.new?.status === 'ACEITO' || 
+        payload.old?.assigned_driver !== payload.new?.assigned_driver
+      ) {
+        onOrdersUpdate();
+      }
+    },
+    onInsert: (payload) => {
+      // Novo pedido ACEITO apareceu
+      if (payload.new?.status === 'ACEITO') {
+        onOrdersUpdate();
+      }
+    },
+    enabled: enabled && !!driverTenantId,
+    debounceMs: 500,
   });
 };
 
