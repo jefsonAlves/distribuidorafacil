@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +19,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MapPin, Phone, User, Package, DollarSign, CreditCard, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import { isValidTransition, getStatusLabel } from "@/lib/orderStateMachine";
-import { RouteMap } from "./RouteMap"; // Importar o componente RouteMap
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar componentes Select
+import { RouteMap } from "./RouteMap";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PaymentCardDialog } from "@/components/payment/PaymentCardDialog";
+import { PaymentPixDialog } from "@/components/payment/PaymentPixDialog";
+import { useOrderRealtime } from "@/hooks/useRealtimeUpdates";
 
 interface OrderDetailsDialogProps {
   order: any;
@@ -46,13 +49,35 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showPendingDialog, setShowPendingDialog] = useState(false);
   const [showFinishDeliveryDialog, setShowFinishDeliveryDialog] = useState(false);
+  const [showCardPaymentDialog, setShowCardPaymentDialog] = useState(false);
+  const [showPixPaymentDialog, setShowPixPaymentDialog] = useState(false);
   const [pendingReason, setPendingReason] = useState("");
-  const [problemCategory, setProblemCategory] = useState<string>(""); // Novo estado para a categoria do problema
+  const [problemCategory, setProblemCategory] = useState<string>("");
+  const [currentOrder, setCurrentOrder] = useState<any>(order);
 
-  if (!order) return null;
+  // Atualizar ordem em tempo real
+  useOrderRealtime(
+    order?.id || null,
+    (updatedOrder) => {
+      setCurrentOrder(updatedOrder);
+      // Se o pagamento foi confirmado, atualizar a interface
+      if (updatedOrder.payment_status === "PAID" && currentOrder?.payment_status !== "PAID") {
+        toast.success("Pagamento confirmado!");
+        onStatusUpdate();
+      }
+    },
+    open
+  );
 
-  const isAvailable = order.status === "ACEITO" && !order.assigned_driver; // Esta linha pode ser removida se não for mais usada
-  const isAssignedToMe = order.assigned_driver === driverId;
+  // Sincronizar order com currentOrder quando order mudar
+  useEffect(() => {
+    setCurrentOrder(order);
+  }, [order]);
+
+  if (!order || !currentOrder) return null;
+
+  const isAvailable = currentOrder.status === "ACEITO" && !currentOrder.assigned_driver;
+  const isAssignedToMe = currentOrder.assigned_driver === driverId;
 
   const acceptOrder = async () => {
     setLoading(true);
@@ -74,20 +99,20 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       }
 
       // Verificar se ainda está disponível
-      const { data: currentOrder } = await supabase
+      const { data: orderCheck } = await supabase
         .from("orders")
         .select("assigned_driver, status")
-        .eq("id", order.id)
+        .eq("id", currentOrder.id)
         .single();
 
-      if (currentOrder?.assigned_driver) {
+      if (orderCheck?.assigned_driver) {
         toast.error("Este pedido já foi aceito por outro entregador");
         onStatusUpdate();
         onOpenChange(false);
         return;
       }
 
-      if (currentOrder?.status !== "ACEITO") {
+      if (orderCheck?.status !== "ACEITO") {
         toast.error("Este pedido não está mais disponível para aceitação");
         onStatusUpdate();
         onOpenChange(false);
@@ -102,7 +127,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
           status: "A_CAMINHO", // Muda automaticamente para "Em Rota de Entrega"
           on_way_at: new Date().toISOString() // Timestamp de início da entrega
         })
-        .eq("id", order.id);
+        .eq("id", currentOrder.id);
 
       if (error) throw error;
 
@@ -119,8 +144,8 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
 
   const updateOrderStatus = async (newStatus: string) => {
     // Validar transição de estado
-    if (!isValidTransition(order.status, newStatus)) {
-      toast.error(`Não é possível mudar de ${getStatusLabel(order.status)} para ${getStatusLabel(newStatus)}`);
+    if (!isValidTransition(currentOrder.status, newStatus)) {
+      toast.error(`Não é possível mudar de ${getStatusLabel(currentOrder.status)} para ${getStatusLabel(newStatus)}`);
       return;
     }
 
@@ -141,9 +166,17 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
   const handleFinishDelivery = (success: boolean) => {
     if (success) {
       // Finalizar com sucesso
-      if (order.payment_method === "CASH") {
+      if (currentOrder.payment_method === "CASH") {
+        // Pagamento em dinheiro - confirmar recebimento
         setShowPaymentDialog(true);
+      } else if (currentOrder.payment_method === "CARD") {
+        // Pagamento com cartão - abrir dialog de pagamento
+        setShowCardPaymentDialog(true);
+      } else if (currentOrder.payment_method === "PIX") {
+        // Pagamento PIX - abrir dialog de PIX
+        setShowPixPaymentDialog(true);
       } else {
+        // Outros métodos - apenas confirmar
         setShowConfirmDialog(true);
       }
     } else {
@@ -151,6 +184,13 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       setShowPendingDialog(true);
     }
     setShowFinishDeliveryDialog(false);
+  };
+
+  const handlePaymentSuccess = async () => {
+    // Atualizar status para ENTREGUE após pagamento confirmado
+    await performStatusUpdate("ENTREGUE", true);
+    setShowCardPaymentDialog(false);
+    setShowPixPaymentDialog(false);
   };
 
   const performStatusUpdate = async (newStatus: string, paymentReceived?: boolean) => {
@@ -178,7 +218,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
       const { error } = await supabase
         .from("orders")
         .update(updates)
-        .eq("id", order.id);
+        .eq("id", currentOrder.id);
 
       if (error) throw error;
       
@@ -216,19 +256,19 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
     await performStatusUpdate("PENDENTE");
   };
 
-  const address = order.address || {};
+  const address = currentOrder.address || {};
   const paymentMethod = {
     CASH: "Dinheiro",
-    CARD: "Cartão",
+    CARD: "Cartão de Crédito",
     PIX: "PIX",
-  }[order.payment_method] || order.payment_method;
+  }[currentOrder.payment_method] || currentOrder.payment_method;
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do Pedido #{order.id.slice(0, 8)}</DialogTitle>
+            <DialogTitle>Detalhes do Pedido #{currentOrder.id.slice(0, 8)}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -239,11 +279,11 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 Cliente
               </h3>
               <div className="space-y-2 text-sm">
-                <p className="font-medium">{order.clients?.full_name || "Nome não disponível"}</p>
+                <p className="font-medium">{currentOrder.clients?.full_name || "Nome não disponível"}</p>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Phone className="h-3 w-3" />
-                  <a href={`tel:${order.clients?.phone}`} className="hover:underline">
-                    {order.clients?.phone || "Telefone não disponível"}
+                  <a href={`tel:${currentOrder.clients?.phone}`} className="hover:underline">
+                    {currentOrder.clients?.phone || "Telefone não disponível"}
                   </a>
                 </div>
               </div>
@@ -263,8 +303,8 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 {address.zipCode && <p>CEP: {address.zipCode}</p>}
               </div>
               {/* Integrar RouteMap aqui */}
-              {driverLocation && order.address && (
-                <RouteMap address={order.address} driverLocation={driverLocation} />
+              {driverLocation && currentOrder.address && (
+                <RouteMap address={currentOrder.address} driverLocation={driverLocation} />
               )}
             </div>
 
@@ -275,7 +315,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 Itens do Pedido
               </h3>
               <div className="space-y-2">
-                {order.order_items?.map((item: any) => (
+                {currentOrder.order_items?.map((item: any) => (
                   <div key={item.id} className="flex justify-between text-sm p-2 bg-muted rounded">
                     <span>{item.quantity}x {item.name}</span>
                     <span className="font-medium">R$ {parseFloat(item.unit_price).toFixed(2)}</span>
@@ -298,15 +338,21 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                     <span className="font-medium">{paymentMethod}</span>
                   </div>
                 </div>
-                {order.change_for && (
+                {currentOrder.change_for && (
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Troco para:</span>
-                    <span className="font-medium">R$ {parseFloat(order.change_for).toFixed(2)}</span>
+                    <span className="font-medium">R$ {parseFloat(currentOrder.change_for).toFixed(2)}</span>
                   </div>
                 )}
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Status:</span>
+                  <Badge variant={currentOrder.payment_status === "PAID" ? "default" : "secondary"}>
+                    {currentOrder.payment_status === "PAID" ? "Pago" : "Pendente"}
+                  </Badge>
+                </div>
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="font-semibold">Total:</span>
-                  <span className="text-lg font-bold text-primary">R$ {parseFloat(order.total).toFixed(2)}</span>
+                  <span className="text-lg font-bold text-primary">R$ {parseFloat(currentOrder.total).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -317,11 +363,11 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 <Clock className="h-4 w-4" />
                 Status Atual
               </h3>
-              <Badge className="text-sm">{getStatusLabel(order.status)}</Badge>
+              <Badge className="text-sm">{getStatusLabel(currentOrder.status)}</Badge>
             </div>
 
             {/* Detalhes do Problema (se PENDENTE) */}
-            {order.status === "PENDENTE" && order.problem_category && order.problem_description && (
+            {currentOrder.status === "PENDENTE" && currentOrder.problem_category && currentOrder.problem_description && (
               <div className="space-y-3 p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
                 <h3 className="font-semibold flex items-center gap-2 text-red-700 dark:text-red-300">
                   <AlertTriangle className="h-4 w-4" />
@@ -329,10 +375,10 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 </h3>
                 <div className="text-sm space-y-1">
                   <p>
-                    <span className="font-medium">Categoria:</span> {order.problem_category.replace(/_/g, " ")}
+                    <span className="font-medium">Categoria:</span> {currentOrder.problem_category.replace(/_/g, " ")}
                   </p>
                   <p>
-                    <span className="font-medium">Descrição:</span> {order.problem_description}
+                    <span className="font-medium">Descrição:</span> {currentOrder.problem_description}
                   </p>
                 </div>
               </div>
@@ -340,7 +386,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
 
             {/* Ações */}
             <div className="space-y-2">
-              {isAssignedToMe && order.status === "EM_PREPARO" && (
+              {isAssignedToMe && currentOrder.status === "EM_PREPARO" && (
                 <Button 
                   onClick={() => updateOrderStatus("A_CAMINHO")} 
                   disabled={loading}
@@ -353,7 +399,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 </Button>
               )}
 
-              {isAssignedToMe && order.status === "ACEITO" && (
+              {isAssignedToMe && currentOrder.status === "ACEITO" && (
                 <Button 
                   onClick={() => updateOrderStatus("A_CAMINHO")} 
                   disabled={loading}
@@ -365,7 +411,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 </Button>
               )}
 
-              {isAssignedToMe && order.status === "A_CAMINHO" && (
+              {isAssignedToMe && currentOrder.status === "A_CAMINHO" && (
                 <Button 
                   onClick={() => updateOrderStatus("NA_PORTA")} 
                   disabled={loading}
@@ -377,7 +423,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 </Button>
               )}
 
-              {isAssignedToMe && order.status === "NA_PORTA" && (
+              {isAssignedToMe && currentOrder.status === "NA_PORTA" && (
                 <Button 
                   onClick={() => updateOrderStatus("ENTREGUE")} 
                   disabled={loading}
@@ -388,7 +434,7 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
                 </Button>
               )}
 
-              {isAssignedToMe && (order.status === "A_CAMINHO" || order.status === "NA_PORTA") && (
+              {isAssignedToMe && (currentOrder.status === "A_CAMINHO" || currentOrder.status === "NA_PORTA") && (
                 <Button 
                   onClick={() => updateOrderStatus("PENDENTE")}
                   disabled={loading}
@@ -472,6 +518,36 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Dialog de Pagamento com Cartão */}
+      {currentOrder && (
+        <PaymentCardDialog
+          open={showCardPaymentDialog}
+          onOpenChange={setShowCardPaymentDialog}
+          amount={parseFloat(currentOrder.total)}
+          orderId={currentOrder.id}
+          onPaymentSuccess={handlePaymentSuccess}
+          onPaymentFailed={() => {
+            setShowCardPaymentDialog(false);
+            setShowPendingDialog(true);
+          }}
+        />
+      )}
+
+      {/* Dialog de Pagamento PIX */}
+      {currentOrder && (
+        <PaymentPixDialog
+          open={showPixPaymentDialog}
+          onOpenChange={setShowPixPaymentDialog}
+          amount={parseFloat(currentOrder.total)}
+          orderId={currentOrder.id}
+          onPaymentSuccess={handlePaymentSuccess}
+          onPaymentExpired={() => {
+            setShowPixPaymentDialog(false);
+            toast.error("Código PIX expirado. Tente novamente.");
+          }}
+        />
+      )}
+
       {/* Dialog de Confirmação - Pagamento em Dinheiro */}
       <AlertDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <AlertDialogContent>
@@ -479,6 +555,11 @@ export const OrderDetailsDialog = ({ order, driverId, open, onOpenChange, onStat
             <AlertDialogTitle>Confirmação de Pagamento</AlertDialogTitle>
             <AlertDialogDescription>
               O pagamento será em dinheiro. O cliente pagou corretamente?
+              {currentOrder.change_for && (
+                <div className="mt-2 p-2 bg-muted rounded">
+                  <p className="text-sm">Troco para: R$ {parseFloat(currentOrder.change_for).toFixed(2)}</p>
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">

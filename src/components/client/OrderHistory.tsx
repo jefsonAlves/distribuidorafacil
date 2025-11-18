@@ -1,6 +1,7 @@
 // FASE 5: Histórico de Pedidos para Cliente
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useClientOrdersRealtime } from "@/hooks/useRealtimeUpdates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +22,10 @@ export const OrderHistory = ({ clientId }: OrderHistoryProps) => {
 
   useEffect(() => {
     fetchOrders();
-    setupRealtime();
   }, [clientId, statusFilter]);
+
+  // Usar hook de realtime para atualização automática
+  useClientOrdersRealtime(clientId, fetchOrders, true);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -57,27 +60,7 @@ export const OrderHistory = ({ clientId }: OrderHistoryProps) => {
     }
   };
 
-  const setupRealtime = () => {
-    const channel = supabase
-      .channel("client_orders_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `client_id=eq.${clientId}`,
-        },
-        () => {
-          fetchOrders();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
+  // Realtime agora é gerenciado pelo hook useClientOrdersRealtime
 
   const getStatusColor = (status: string) => {
     const colors: any = {

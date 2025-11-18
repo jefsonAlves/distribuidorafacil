@@ -1,6 +1,7 @@
 // FASE 2: Gestão de Pedidos para Empresa
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrdersListRealtime } from "@/hooks/useRealtimeUpdates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,10 +34,8 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
     fetchDrivers();
   }, [tenantId, statusFilter]);
 
-  useEffect(() => {
-    const cleanup = setupRealtime();
-    return cleanup;
-  }, [tenantId]);
+  // Usar hook de realtime para atualização automática
+  useOrdersListRealtime(tenantId, fetchOrders, true);
 
   const fetchOrders = async () => {
     try {
@@ -79,31 +78,7 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
     }
   };
 
-  const setupRealtime = () => {
-    const channel = supabase
-      .channel("orders_management_realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        (payload: any) => {
-          // Atualizar automaticamente quando houver mudanças
-          // Debounce para evitar múltiplas atualizações rápidas
-          setTimeout(() => {
-            fetchOrders();
-          }, 100);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
+  // Realtime agora é gerenciado pelo hook useOrdersListRealtime
 
   const assignDriver = async () => {
     if (!selectedOrder || !selectedDriver) return;
