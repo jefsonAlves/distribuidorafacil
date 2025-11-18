@@ -302,15 +302,6 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                   </Badge>
                 )}
 
-                {order.status === "ACEITO" && (
-                  <Button
-                    size="sm"
-                    onClick={() => updateStatus(order.id, "EM_PREPARO")}
-                  >
-                    Marcar como Em Preparo
-                  </Button>
-                )}
-
                 {order.status === "EM_PREPARO" && (
                   <Badge variant="outline" className="text-xs">
                     Pedido em preparo - Aguardando motorista

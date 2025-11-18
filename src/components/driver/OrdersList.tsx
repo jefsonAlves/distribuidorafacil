@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -146,7 +146,20 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
     }
   }, [driverId, driverTenantId]);
 
+  // Notificar quando novos pedidos aparecerem
   useEffect(() => {
+    if (availableOrders.length > prevCountRef.current && prevCountRef.current > 0) {
+      toast.success("Novo pedido disponível!", {
+        description: "Um novo pedido está aguardando você!",
+        duration: 5000,
+      });
+    }
+    prevCountRef.current = availableOrders.length;
+  }, [availableOrders.length]);
+
+  useEffect(() => {
+    if (!driverTenantId) return;
+
     let timeoutId: NodeJS.Timeout;
     
     const fetchOrdersWithDebounce = () => {
@@ -155,7 +168,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
       }
       timeoutId = setTimeout(() => {
         fetchOrders();
-      }, 200);
+      }, 500);
     };
 
     fetchOrders();
@@ -167,27 +180,25 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
         {
           event: '*',
           schema: 'public',
-          table: 'orders'
+          table: 'orders',
+          filter: `tenant_id=eq.${driverTenantId}`
         },
         (payload: any) => {
+          console.log("🔔 Realtime event:", payload.eventType, payload.new?.status);
+          
           const newOrder = payload.new;
           const oldOrder = payload.old;
 
           if (!newOrder && !oldOrder) return;
 
-          // Re-fetch se:
-          // 1. Um pedido se torna ACEITO e não atribuído (disponível para motoristas)
-          // 2. Um pedido é atribuído a este driver
-          // 3. O status de um pedido atribuído a este driver muda (e não foi ENTREGUE/CANCELADO)
-          // 4. Um pedido atribuído a este driver foi finalizado (ENTREGUE/CANCELADO) - libera para ver novos
-          const isNowAvailable = newOrder?.status === 'ACEITO' && !newOrder?.assigned_driver;
-          const isNowAssignedToMe = newOrder?.assigned_driver === driverId && newOrder?.status !== 'ENTREGUE' && newOrder?.status !== 'CANCELADO';
-          const wasAssignedToMeAndStatusChanged = oldOrder?.assigned_driver === driverId && newOrder?.status !== oldOrder?.status;
-          const wasAssignedToMeAndNowNot = oldOrder?.assigned_driver === driverId && newOrder?.assigned_driver !== driverId;
-          const wasAssignedToMeAndNowFinished = oldOrder?.assigned_driver === driverId && (newOrder?.status === 'ENTREGUE' || newOrder?.status === 'CANCELADO');
-          const statusChangedToAccepted = oldOrder?.status !== 'ACEITO' && newOrder?.status === 'ACEITO' && !newOrder?.assigned_driver;
-          
-          if (isNowAvailable || isNowAssignedToMe || wasAssignedToMeAndStatusChanged || wasAssignedToMeAndNowNot || wasAssignedToMeAndNowFinished || statusChangedToAccepted) {
+          // Atualizar se pedido mudou para ACEITO ou mudou assigned_driver
+          const isRelevantUpdate =
+            newOrder?.assigned_driver === driverId ||
+            oldOrder?.assigned_driver === driverId ||
+            (newOrder?.status === 'ACEITO' && !newOrder?.assigned_driver);
+
+          if (isRelevantUpdate) {
+            console.log("✅ Atualizando lista de pedidos...");
             fetchOrdersWithDebounce();
           }
         }
@@ -200,7 +211,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
       }
       supabase.removeChannel(channel);
     };
-  }, [driverId, fetchOrders]);
+  }, [driverId, driverTenantId, fetchOrders]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -280,6 +291,13 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
     }
   };
 
+  // Verificar se pedido é novo (< 2 minutos)
+  const isNewOrder = (createdAt: string) => {
+    const orderTime = new Date(createdAt).getTime();
+    const now = Date.now();
+    return (now - orderTime) < 2 * 60 * 1000;
+  };
+
   const renderOrderCard = (order: any, isAvailableTab: boolean) => (
     <Card key={order.id} className="p-4 hover:shadow-lg transition-shadow">
       <div className="space-y-3">
@@ -288,6 +306,9 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
             <div className="flex items-center gap-2">
               <span className="font-mono text-sm font-semibold">#{order.id.slice(0, 8)}</span>
               {getStatusBadge(order.status)}
+              {isNewOrder(order.created_at) && (
+                <Badge className="animate-pulse bg-green-500 ml-2">Novo!</Badge>
+              )}
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-3 w-3" />
