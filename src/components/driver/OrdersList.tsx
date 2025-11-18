@@ -7,7 +7,8 @@ import { Package, MapPin, Phone, User, DollarSign, Clock, CheckCircle2 } from "l
 import { toast } from "sonner";
 import { OrderDetailsDialog } from "./OrderDetailsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getStatusLabel } from "@/lib/orderStateMachine"; // Importar getStatusLabel
+import { getStatusLabel } from "@/lib/orderStateMachine";
+import { useDriverOrdersRealtime } from "@/hooks/useRealtimeUpdates";
 
 interface OrdersListProps {
   driverId: string;
@@ -73,6 +74,13 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   }, []);
 
   const fetchOrders = useCallback(async () => {
+    if (!driverTenantId) {
+      setAvailableOrders([]);
+      setInProgressOrders([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       // Primeiro verificar se o motorista tem algum pedido em andamento
@@ -90,7 +98,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
       // Buscar pedidos disponíveis (status ACEITO pela empresa e sem driver atribuído)
       // Só mostrar se o motorista não tiver pedido em andamento
       let fetchedAvailableOrders: any[] = [];
-      if (!hasOrderInProgress && driverTenantId) {
+      if (!hasOrderInProgress) {
         const { data, error: error1 } = await supabase
           .from("orders")
           .select(`
@@ -159,59 +167,10 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
 
   useEffect(() => {
     if (!driverTenantId) return;
-
-    let timeoutId: NodeJS.Timeout;
-    
-    const fetchOrdersWithDebounce = () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      timeoutId = setTimeout(() => {
-        fetchOrders();
-      }, 500);
-    };
-
     fetchOrders();
+  }, [driverTenantId, fetchOrders]);
 
-    const channel = supabase
-      .channel(`driver-orders-realtime-${driverId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `tenant_id=eq.${driverTenantId}`
-        },
-        (payload: any) => {
-          console.log("🔔 Realtime event:", payload.eventType, payload.new?.status);
-          
-          const newOrder = payload.new;
-          const oldOrder = payload.old;
-
-          if (!newOrder && !oldOrder) return;
-
-          // Atualizar se pedido mudou para ACEITO ou mudou assigned_driver
-          const isRelevantUpdate =
-            newOrder?.assigned_driver === driverId ||
-            oldOrder?.assigned_driver === driverId ||
-            (newOrder?.status === 'ACEITO' && !newOrder?.assigned_driver);
-
-          if (isRelevantUpdate) {
-            console.log("✅ Atualizando lista de pedidos...");
-            fetchOrdersWithDebounce();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      supabase.removeChannel(channel);
-    };
-  }, [driverId, driverTenantId, fetchOrders]);
+  useDriverOrdersRealtime(driverTenantId, fetchOrders, !!driverTenantId);
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { variant: "default" | "secondary" | "destructive" | "outline" }> = {

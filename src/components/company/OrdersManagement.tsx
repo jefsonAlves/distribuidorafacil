@@ -308,16 +308,6 @@ export const OrdersManagement = ({ tenantId }: OrdersManagementProps) => {
                   </Badge>
                 )}
 
-                {order.status === "PENDENTE" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => updateStatus(order.id, "ACEITO")}
-                  >
-                    Resolver Problema (Aceitar novamente)
-                  </Button>
-                )}
-
               </div>
             </CardContent>
           </Card>
