@@ -20,7 +20,27 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("available");
-  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null); // Novo estado para a localização do motorista
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [driverTenantId, setDriverTenantId] = useState<string | null>(null);
+  const prevCountRef = useRef(0);
+
+  // Buscar tenant_id do motorista
+  useEffect(() => {
+    const fetchDriverTenant = async () => {
+      const { data } = await supabase
+        .from("drivers")
+        .select("tenant_id")
+        .eq("id", driverId)
+        .single();
+      
+      if (data) {
+        setDriverTenantId(data.tenant_id);
+        console.log("🏢 Tenant do motorista:", data.tenant_id);
+      }
+    };
+    
+    fetchDriverTenant();
+  }, [driverId]);
 
   // Efeito para obter a localização atual do motorista
   useEffect(() => {
@@ -70,7 +90,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
       // Buscar pedidos disponíveis (status ACEITO pela empresa e sem driver atribuído)
       // Só mostrar se o motorista não tiver pedido em andamento
       let fetchedAvailableOrders: any[] = [];
-      if (!hasOrderInProgress) {
+      if (!hasOrderInProgress && driverTenantId) {
         const { data, error: error1 } = await supabase
           .from("orders")
           .select(`
@@ -80,10 +100,13 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
           `)
           .eq("status", "ACEITO")
           .is("assigned_driver", null)
+          .eq("tenant_id", driverTenantId)
           .order("created_at", { ascending: true });
 
         if (error1) throw error1;
         fetchedAvailableOrders = data || [];
+        
+        console.log("📦 Pedidos disponíveis encontrados:", fetchedAvailableOrders.length);
       }
 
       // Buscar pedidos em andamento (atribuídos a este driver)
@@ -100,6 +123,19 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
 
       if (error2) throw error2;
       
+      console.log("🚗 Driver ID:", driverId);
+      console.log("🚚 Pedidos em andamento:", fetchedInProgressOrders?.length || 0);
+      
+      // Verificar se motorista tem sessão ativa
+      const { data: session } = await supabase
+        .from("driver_sessions")
+        .select("id")
+        .eq("driver_id", driverId)
+        .is("ended_at", null)
+        .maybeSingle();
+      
+      console.log("📱 Sessão ativa:", !!session);
+      
       setAvailableOrders(fetchedAvailableOrders);
       setInProgressOrders(fetchedInProgressOrders || []);
     } catch (error: any) {
@@ -108,7 +144,7 @@ export const OrdersList = ({ driverId }: OrdersListProps) => {
     } finally {
       setLoading(false);
     }
-  }, [driverId]);
+  }, [driverId, driverTenantId]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
